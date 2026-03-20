@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/" />
+  <Folder Name="/BicepFiles4XC/">
+    <File Path="..\Bicep\BicepFiles4XC\main.bicep" />
+    <File Path="..\Bicep\BicepFiles4XC\createStorageAccount.bicep" />
+    <File Path="..\Bicep\BicepFiles4XC\updateAppServicePlan.bicep" />
+    <File Path="..\Bicep\BicepFiles4XC\createAppService.bicep" />
+  </Folder>
+  <Project Path="HW4NoteKeeper.BlazorUI/HW4NoteKeeper.BlazorUI.csproj" />
+  <Project Path="HW4NoteKeeper.Tests/HW4NoteKeeper.Tests.csproj" />
+  <Project Path="HW4NoteKeeper/HW4NoteKeeper.csproj" />
+</Solution>

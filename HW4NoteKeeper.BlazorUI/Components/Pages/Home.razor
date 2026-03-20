@@ -1,0 +1,115 @@
+﻿@page "/"
+
+<PageTitle>NoteKeeper API Tester</PageTitle>
+
+<h1>NoteKeeper API Tester</h1>
+
+<div class="api-tester-container">
+
+    <!-- GET ALL NOTES -->
+    <div class="api-section">
+        <h3>Get All Notes</h3>
+        
+        <button class="btn btn-primary" @onclick="GetAllNotes">Get All Notes</button>
+        
+        <div class="response-section">
+            <label>HTTP Status Code:</label>
+            <input type="text" class="form-control status-code" readonly value="@getAllStatusCode" />
+            
+            <label>Response Body:</label>
+            <textarea class="form-control response-body" readonly rows="15">@getAllResponse</textarea>
+        </div>
+    </div>
+
+    <hr />
+
+    <!-- GET NOTE BY ID -->
+    <div class="api-section">
+        <h3>Get Note by Id</h3>
+        
+        <div class="input-group">
+            <label>Note ID:</label>
+            <input type="text" class="form-control" @bind="getNoteId" placeholder="Enter note ID" />
+        </div>
+        
+        <button class="btn btn-primary" @onclick="GetNoteById">Get Note By ID</button>
+        
+        <div class="response-section">
+            <label>HTTP Status Code:</label>
+            <input type="text" class="form-control status-code" readonly value="@getByIdStatusCode" />
+            
+            <label>Response Body:</label>
+            <textarea class="form-control response-body" readonly rows="15">@getByIdResponse</textarea>
+        </div>
+    </div>
+
+    <hr />
+
+    <!-- CREATE NOTE -->
+    <div class="api-section">
+        <h3>Create Note</h3>
+        
+        <label>Request Body:</label>
+        <textarea class="form-control request-body" @bind="createNoteJson" rows="10"></textarea>
+        
+        <button class="btn btn-success" @onclick="CreateNote">Create Note</button>
+        
+        <div class="response-section">
+            <label>HTTP Status Code:</label>
+            <input type="text" class="form-control status-code" readonly value="@createStatusCode" />
+            
+            <label>Response Body:</label>
+            <textarea class="form-control response-body" readonly rows="15">@createResponse</textarea>
+        </div>
+    </div>
+
+    <hr />
+
+    <!-- UPDATE NOTE -->
+    <div class="api-section">
+        <h3>Update Note</h3>
+        
+        <label>Request Body:</label>
+        <textarea class="form-control request-body" @bind="updateNoteJson" rows="10"></textarea>
+        
+        <div class="input-group">
+            <label>Note ID to Update:</label>
+            <input type="text" class="form-control" @bind="updateNoteId" placeholder="Enter note ID" />
+        </div>
+        
+        <button class="btn btn-warning" @onclick="UpdateNote">Update Note</button>
+        
+        <div class="response-section">
+            <label>HTTP Status Code:</label>
+            <input type="text" class="form-control status-code" readonly value="@updateStatusCode" />
+            
+            <label>Response Body:</label>
+            <textarea class="form-control response-body" readonly rows="15">@updateResponse</textarea>
+        </div>
+    </div>
+
+    <hr />
+
+    <!-- DELETE NOTE -->
+    <div class="api-section">
+        <h3>Delete Note</h3>
+        
+        <div class="input-group">
+            <label>Note ID:</label>
+            <input type="text" class="form-control" @bind="deleteNoteId" placeholder="Enter note ID to delete" />
+        </div>
+        
+        <button class="btn btn-danger" @onclick="DeleteNote">Delete Note</button>
+        
+        <div class="response-section">
+            <label>HTTP Status Code:</label>
+            <input type="text" class="form-control status-code" readonly value="@deleteStatusCode" />
+            
+            <label>Response Body:</label>
+            <textarea class="form-control response-body" readonly rows="15">@deleteResponse</textarea>
+        </div>
+    </div>
+
+</div>
+
+ 

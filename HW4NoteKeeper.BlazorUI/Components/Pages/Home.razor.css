@@ -1,0 +1,68 @@
+.api-tester-container {
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+.api-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.api-section h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.response-section {
+    margin-top: 20px;
+}
+
+.response-section label {
+    display: block;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.status-code {
+    width: 200px;
+    font-weight: bold;
+}
+
+.response-body {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.request-body {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    width: 100%;
+    max-width: 800px;
+}
+
+button {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+hr {
+    margin: 40px 0;
+    border: none;
+    border-top: 2px solid #ddd;
+}

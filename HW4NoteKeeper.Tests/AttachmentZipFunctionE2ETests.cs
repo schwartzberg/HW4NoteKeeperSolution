@@ -1,10 +1,12 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Azure.Storage.Queues;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Xunit;
 
@@ -12,20 +14,15 @@ namespace HW4NoteKeeper.Tests
 {
     /// <summary>
     /// End-to-end tests for the <c>AttachmentZipFunction</c> Azure Function.
-    /// These tests place real messages on the <c>attachment-zip-requests</c> Azure Storage Queue,
-    /// then assert that the function produces a zip blob in the expected <c>{noteId}-zip</c>
-    /// container.  They require:
-    /// <list type="bullet">
-    ///   <item>The <c>func-HW4</c> Azure Function App to be deployed and running.</item>
-    ///   <item>Blobs already uploaded to the <c>{noteId}</c> attachment container (or the test
-    ///         creates them directly in storage).</item>
-    ///   <item>Managed identity (<c>id-dbadmin</c>) granted Storage Queue Data Contributor +
-    ///         Storage Blob Data Contributor on <c>st4hw3</c>.</item>
-    /// </list>
+    /// Each test that expects a zip to be created first creates a Note via the live API
+    /// (so the note ID exists in the SQL database), uploads PNG attachments via the live API
+    /// (so the attachment container exists in blob storage), then enqueues a message
+    /// and waits for the function to produce the zip blob.
     /// </summary>
     /// <remarks>
-    /// IMPORTANT: Never run these tests automatically – they require the Azure Function App
-    /// to be deployed.  Run after publishing with <c>[Trait("Category","E2E")]</c> filter.
+    /// IMPORTANT: Never run these tests automatically – they require both the API and the
+    /// Azure Function App to be deployed.  Run only after publishing with
+    /// <c>dotnet test --filter "Category=E2E"</c>.
     /// </remarks>
     [Collection("Sequential")]
     [Trait("Category", "E2E")]
@@ -33,16 +30,23 @@ namespace HW4NoteKeeper.Tests
     {
         private const string QueueName = "attachment-zip-requests";
         private const string StorageAccountName = "st4hw3";
+        private static readonly string BaseUrl =
+            "https://app-notekeeper-cscie94-ps-hw4-bdffa3cmetfag8em.swedencentral-01.azurewebsites.net/";
 
+        private readonly HttpClient _apiClient;
         private readonly BlobServiceClient _blobServiceClient;
         private readonly QueueServiceClient _queueServiceClient;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        // containers / blobs to clean up after each test
+        // Notes created via the API – cleaned up with the enhanced DELETE (removes DB row + storage)
+        private readonly List<string> _createdNoteIds = new();
+        // Containers created directly in storage (e.g. zip containers) that need direct cleanup
         private readonly List<string> _containerNamesToDelete = new();
 
         public AttachmentZipFunctionE2ETests(WebApplicationFactory<Program> factory)
         {
+            _apiClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };
+
             IConfiguration config = new ConfigurationBuilder()
                 .AddUserSecrets<AttachmentZipFunctionE2ETests>()
                 .Build();
@@ -76,45 +80,67 @@ namespace HW4NoteKeeper.Tests
 
         public async Task DisposeAsync()
         {
+            // Use the enhanced DELETE endpoint to remove note from DB + all its storage containers
+            foreach (string noteId in _createdNoteIds)
+            {
+                try { await _apiClient.DeleteAsync($"NoteKeeper/{noteId}"); }
+                catch { /* best-effort cleanup */ }
+            }
+
+            // Also clean up any zip containers that may not be covered by the enhanced DELETE
             foreach (string containerName in _containerNamesToDelete)
             {
-                try
-                {
-                    var container = _blobServiceClient.GetBlobContainerClient(containerName);
-                    await container.DeleteIfExistsAsync();
-                }
-                catch
-                {
-                    // Best-effort cleanup – do not fail the test
-                }
+                try { await _blobServiceClient.GetBlobContainerClient(containerName).DeleteIfExistsAsync(); }
+                catch { /* best-effort cleanup */ }
             }
         }
 
         // ─── Helpers ─────────────────────────────────────────────────────────────
 
-        /// <summary>Creates an attachment container and uploads a single text blob.</summary>
-        private async Task<string> CreateAttachmentContainerWithBlobsAsync(
-            string noteId,
-            string blobName = "test-attachment.txt",
-            string content = "Hello from E2E test attachment")
+        /// <summary>
+        /// Creates a Note via the live API (POST /NoteKeeper) so the note ID is in the SQL database.
+        /// Returns the new note's GUID as a string.
+        /// </summary>
+        private async Task<string> CreateTestNoteAsync()
         {
-            string noteIdLower = noteId.ToLower();
-            var container = _blobServiceClient.GetBlobContainerClient(noteIdLower);
-            await container.CreateIfNotExistsAsync(PublicAccessType.None);
-            _containerNamesToDelete.Add(noteIdLower);
-
-            var blobClient = container.GetBlobClient(blobName);
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            using var ms = new MemoryStream(bytes);
-            await blobClient.UploadAsync(ms, new BlobUploadOptions
+            var noteInput = new
             {
-                HttpHeaders = new BlobHttpHeaders { ContentType = "text/plain" }
-            });
+                summary = "Zip Function E2E Test",
+                details = "Test note created by AttachmentZipFunctionE2ETests for zip creation validation"
+            };
 
-            return noteIdLower;
+            var response = await _apiClient.PostAsJsonAsync("NoteKeeper", noteInput);
+            response.StatusCode.Should().Be(HttpStatusCode.Created,
+                $"Failed to create test note: {await response.Content.ReadAsStringAsync()}");
+
+            string body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            string noteId = doc.RootElement.GetProperty("noteId").GetString()!;
+            _createdNoteIds.Add(noteId);
+            return noteId;
         }
 
-        /// <summary>Sends a ZipRequest message to the queue.</summary>
+        /// <summary>
+        /// Uploads a PNG file from <c>AzureStorageAttachments\</c> via the live API
+        /// (PUT /notes/{noteId}/attachments/{fileName} multipart/form-data).
+        /// This creates the attachment container in blob storage under the note ID.
+        /// </summary>
+        private async Task UploadPngAttachmentAsync(string noteId, string fileName)
+        {
+            string pngPath = Path.Combine(AppContext.BaseDirectory, "AzureStorageAttachments", fileName);
+            byte[] bytes = await File.ReadAllBytesAsync(pngPath);
+
+            using var form = new MultipartFormDataContent();
+            using var fileContent = new ByteArrayContent(bytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(fileContent, "fileData", fileName);
+
+            var response = await _apiClient.PutAsync($"notes/{noteId}/attachments/{fileName}", form);
+            response.StatusCode.Should().BeOneOf(
+                HttpStatusCode.Created, HttpStatusCode.NoContent);
+        }
+
+        /// <summary>Sends a ZipRequest message to the attachment-zip-requests queue.</summary>
         private async Task EnqueueZipRequestAsync(string noteId, string zipFileId)
         {
             var message = new { noteId, zipFileId };
@@ -138,7 +164,6 @@ namespace HW4NoteKeeper.Tests
             {
                 if (await containerClient.ExistsAsync() && await blobClient.ExistsAsync())
                     return;
-
                 await Task.Delay(3000);
             }
 
@@ -151,90 +176,73 @@ namespace HW4NoteKeeper.Tests
         [Fact]
         public async Task Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs()
         {
-            // Arrange
-            string noteId = Guid.NewGuid().ToString();
+            // Arrange – create note in DB + upload PNG attachments via the live API
+            string noteId = await CreateTestNoteAsync();
+            await UploadPngAttachmentAsync(bnoteId, "WrappingPaper.png");
+            await UploadPngAttachmentAsync(noteId, "Tape.png");
+
             string zipFileId = $"{Guid.NewGuid()}.zip";
             string zipContainerName = $"{noteId.ToLower()}-zip";
             _containerNamesToDelete.Add(zipContainerName);
-
-            await CreateAttachmentContainerWithBlobsAsync(noteId);
 
             // Act – enqueue message and wait for function to produce zip
             await EnqueueZipRequestAsync(noteId, zipFileId);
             await WaitForZipBlobAsync(noteId, zipFileId, maxWaitSeconds: 90);
 
-            // Assert – zip blob exists
+            // Assert – zip container and blob both exist
             var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);
-            bool containerExists = await zipContainer.ExistsAsync();
-            containerExists.Should().BeTrue();
-
-            var zipBlobClient = zipContainer.GetBlobClient(zipFileId);
-            bool blobExists = await zipBlobClient.ExistsAsync();
-            blobExists.Should().BeTrue();
+            (await zipContainer.ExistsAsync()).Value.Should().BeTrue($"zip container '{zipContainerName}' should have been created");
+            (await zipContainer.GetBlobClient(zipFileId).ExistsAsync()).Value.Should().BeTrue($"zip blob '{zipFileId}' should exist in the container");
         }
 
         [Fact]
         public async Task Function_CreatesZipContainingAllAttachmentBlobs()
         {
-            // Arrange – upload multiple attachments
-            string noteId = Guid.NewGuid().ToString();
+            // Arrange – create note + upload 3 PNG attachments via the API
+            string noteId = await CreateTestNoteAsync();
+            await UploadPngAttachmentAsync(noteId, "WrappingPaper.png");
+            await UploadPngAttachmentAsync(noteId, "Tape.png");
+            await UploadPngAttachmentAsync(noteId, "Oranges.png");
+
             string zipFileId = $"{Guid.NewGuid()}.zip";
             string zipContainerName = $"{noteId.ToLower()}-zip";
             _containerNamesToDelete.Add(zipContainerName);
-
-            string noteIdLower = noteId.ToLower();
-            var attachmentContainer = _blobServiceClient.GetBlobContainerClient(noteIdLower);
-            await attachmentContainer.CreateIfNotExistsAsync(PublicAccessType.None);
-            _containerNamesToDelete.Add(noteIdLower);
-
-            // Upload 3 blobs
-            for (int i = 1; i <= 3; i++)
-            {
-                var blobClient = attachmentContainer.GetBlobClient($"file{i}.txt");
-                byte[] bytes = System.Text.Encoding.UTF8.GetBytes($"Content of file {i}");
-                using var ms = new MemoryStream(bytes);
-                await blobClient.UploadAsync(ms, overwrite: true);
-            }
 
             // Act
             await EnqueueZipRequestAsync(noteId, zipFileId);
             await WaitForZipBlobAsync(noteId, zipFileId, maxWaitSeconds: 90);
 
-            // Assert – zip blob is non-empty and is a valid zip archive
-            var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);
-            var zipBlobClient = zipContainer.GetBlobClient(zipFileId);
+            // Assert – zip is a valid archive containing all 3 attachment files
+            var zipBlobClient = _blobServiceClient.GetBlobContainerClient(zipContainerName).GetBlobClient(zipFileId);
             var download = await zipBlobClient.DownloadContentAsync();
             byte[] zipBytes = download.Value.Content.ToArray();
             zipBytes.Length.Should().BeGreaterThan(0);
+            zipBytes[0].Should().Be(0x50, "first byte should be 'P' (PK magic)");
+            zipBytes[1].Should().Be(0x4B, "second byte should be 'K' (PK magic)");
 
-            // Verify it's a valid zip (PK magic bytes: 0x50 0x4B)
-            zipBytes[0].Should().Be(0x50);
-            zipBytes[1].Should().Be(0x4B);
-
-            // Verify all 3 attachments are inside the zip
             using var zipStream = new MemoryStream(zipBytes);
             using var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Read);
-            archive.Entries.Select(e => e.Name).Should().Contain(new[] { "file1.txt", "file2.txt", "file3.txt" });
+            archive.Entries.Select(e => e.Name).Should().Contain(
+                new[] { "WrappingPaper.png", "Tape.png", "Oranges.png" });
         }
 
         [Fact]
         public async Task Function_SetsContentTypeToApplicationZip()
         {
-            // Arrange
-            string noteId = Guid.NewGuid().ToString();
+            // Arrange – create note + one attachment via API
+            string noteId = await CreateTestNoteAsync();
+            await UploadPngAttachmentAsync(noteId, "WrappingPaper.png");
+
             string zipFileId = $"{Guid.NewGuid()}.zip";
             string zipContainerName = $"{noteId.ToLower()}-zip";
             _containerNamesToDelete.Add(zipContainerName);
-
-            await CreateAttachmentContainerWithBlobsAsync(noteId);
 
             // Act
             await EnqueueZipRequestAsync(noteId, zipFileId);
             await WaitForZipBlobAsync(noteId, zipFileId, maxWaitSeconds: 90);
 
-            // Assert – blob ContentType is application/zip
-            var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);
-            var zipBlobClient = zipContainer.GetBlobClient(zipFileId);
+            // Assert – ContentType header is application/zip
+            var zipBlobClient = _blobServiceClient.GetBlobContainerClient(zipContainerName).GetBlobClient(zipFileId);
             var properties = await zipBlobClient.GetPropertiesAsync();
             properties.Value.ContentType.Should().Be("application/zip");
         }
@@ -242,31 +250,23 @@ namespace HW4NoteKeeper.Tests
         [Fact]
         public async Task Function_DoesNotCreateZip_WhenAttachmentContainerIsEmpty()
         {
-            // Arrange – create an empty attachment container
-            string noteId = Guid.NewGuid().ToString();
+            // Arrange – create note in DB but do NOT upload any attachments
+            // The attachment container will not exist (or be empty), so nothing to zip
+            string noteId = await CreateTestNoteAsync();
             string zipFileId = $"{Guid.NewGuid()}.zip";
             string zipContainerName = $"{noteId.ToLower()}-zip";
-            string noteIdLower = noteId.ToLower();
-            _containerNamesToDelete.Add(noteIdLower);
 
-            var attachmentContainer = _blobServiceClient.GetBlobContainerClient(noteIdLower);
-            await attachmentContainer.CreateIfNotExistsAsync(PublicAccessType.None);
-
-            // Act – enqueue; function should skip zip creation
+            // Act – enqueue; function should log a warning and return without creating zip
             await EnqueueZipRequestAsync(noteId, zipFileId);
-
-            // Wait a reasonable time and verify no zip container/blob was created
             await Task.Delay(30_000);
 
             var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);
             bool zipContainerExists = await zipContainer.ExistsAsync();
 
-            // Container should not have been created (or blob should not exist)
             if (zipContainerExists)
             {
-                var blobClient = zipContainer.GetBlobClient(zipFileId);
-                bool blobExists = await blobClient.ExistsAsync();
-                blobExists.Should().BeFalse("zip blob should not be created if attachment container is empty");
+                bool blobExists = await zipContainer.GetBlobClient(zipFileId).ExistsAsync();
+                blobExists.Should().BeFalse("zip blob should not be created when no attachments exist");
             }
             else
             {
@@ -275,23 +275,22 @@ namespace HW4NoteKeeper.Tests
         }
 
         [Fact]
-        public async Task Function_DoesNotCreateZip_WhenAttachmentContainerDoesNotExist()
+        public async Task Function_DoesNotCreateZip_WhenNoteDoesNotExistInDatabase()
         {
-            // Arrange – do NOT create an attachment container
+            // Arrange – use a random noteId that is NOT in the database or storage
             string noteId = Guid.NewGuid().ToString();
             string zipFileId = $"{Guid.NewGuid()}.zip";
             string zipContainerName = $"{noteId.ToLower()}-zip";
 
-            // Act – enqueue; function should log warning and return without creating zip
+            // Act – enqueue; function should discard after DB check finds no such note
             await EnqueueZipRequestAsync(noteId, zipFileId);
-
-            // Wait and verify no zip was created
             await Task.Delay(30_000);
 
             var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);
             bool zipContainerExists = await zipContainer.ExistsAsync();
             zipContainerExists.Should().BeFalse(
-                "zip container should not be created when attachment container does not exist");
+                "zip container should not be created when the note ID does not exist in the database");
         }
     }
 }
+

@@ -2,6 +2,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using HW4AzureFunctions.Models;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.IO.Compression;
 using System.Text.Json;
@@ -25,14 +27,16 @@ namespace HW4AzureFunctions
     {
         private readonly BlobStorageHelper _blobStorageHelper;
         private readonly ILogger<AttachmentZipFunction> _logger;
+        private readonly string? _sqlConnectionString;
 
         /// <summary>
         /// Initialises a new instance of <see cref="AttachmentZipFunction"/>.
         /// </summary>
-        public AttachmentZipFunction(BlobStorageHelper blobStorageHelper, ILogger<AttachmentZipFunction> logger)
+        public AttachmentZipFunction(BlobStorageHelper blobStorageHelper, ILogger<AttachmentZipFunction> logger, IConfiguration configuration)
         {
             _blobStorageHelper = blobStorageHelper;
             _logger = logger;
+            _sqlConnectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         /// <summary>
@@ -78,6 +82,16 @@ namespace HW4AzureFunctions
             _logger.LogInformation(
                 "Processing zip request – NoteId={NoteId}, ZipFileId={ZipFileId}, ZipContainer={ZipContainer}",
                 noteId, zipFileId, zipContainerName);
+
+            // Verify the note still exists in the database before doing any storage work
+            if (!await NoteExistsInDatabaseAsync(request.NoteId))
+            {
+                _logger.LogWarning(
+                    "Note {NoteId} does not exist in the database. Discarding stale zip request (ZipFileId={ZipFileId}).",
+                    noteId, zipFileId);
+                // Return without throwing – consume the message rather than retry/poison
+                return;
+            }
 
             BlobServiceClient blobServiceClient = _blobStorageHelper.Client;
 
@@ -143,6 +157,36 @@ namespace HW4AzureFunctions
             _logger.LogInformation(
                 "Successfully uploaded zip '{ZipFileId}' to container '{ZipContainer}' for note {NoteId}",
                 zipFileId, zipContainerName, noteId);
+        }
+
+        /// <summary>
+        /// Returns <c>true</c> if a note with the given ID exists in the SQL database.
+        /// If the connection string is not configured the check is skipped (returns <c>true</c>).
+        /// Any SQL error is re-thrown so the message is retried and eventually poisoned.
+        /// </summary>
+        private async Task<bool> NoteExistsInDatabaseAsync(string noteId)
+        {
+            if (string.IsNullOrWhiteSpace(_sqlConnectionString))
+            {
+                _logger.LogWarning("No SQL connection string configured – skipping DB existence check for note {NoteId}.", noteId);
+                return true;
+            }
+
+            try
+            {
+                await using var connection = new SqlConnection(_sqlConnectionString);
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT COUNT(1) FROM Notes WHERE Id = @NoteId";
+                command.Parameters.AddWithValue("@NoteId", Guid.Parse(noteId));
+                int count = Convert.ToInt32(await command.ExecuteScalarAsync());
+                return count > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking database for NoteId {NoteId} – retrying message.", noteId);
+                throw; // Let the runtime retry and eventually move to poison queue
+            }
         }
     }
 }

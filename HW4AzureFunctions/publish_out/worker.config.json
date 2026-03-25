@@ -1,0 +1,10 @@
+{
+  "description": {
+    "language": "dotnet-isolated",
+    "extensions": [ ".dll" ],
+    "defaultExecutablePath": "dotnet",
+    "defaultWorkerPath": "HW4AzureFunctions.dll",
+    "workerIndexing": "true",
+    "canUsePlaceholder": true
+  }
+}

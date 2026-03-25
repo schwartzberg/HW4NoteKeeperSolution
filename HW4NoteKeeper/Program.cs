@@ -2,6 +2,7 @@ using Azure;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using HW4NoteKeeper.CustomSettings;
 using HW4NoteKeeper.Data;
 using HW4NoteKeeper.Settings;
@@ -146,6 +147,7 @@ namespace HW4NoteKeeper
 
             builder.Services.AddSingleton(storageAccountSettings);
             RegisterBlobServiceClient(builder, storageAccountSettings);
+            RegisterQueueServiceClient(builder, storageAccountSettings);
             builder.Services.AddScoped<HW4NoteKeeper.Services.AzureStorageService>();
 
             // Register AzureStorageInitializer as singleton for seeding operations
@@ -257,6 +259,42 @@ namespace HW4NoteKeeper
 
             var credential = new DefaultAzureCredential(credentialOptions);
             builder.Services.AddSingleton(new BlobServiceClient(new Uri(storageSettings.Url), credential));
+        }
+
+        /// <summary>
+        /// Registers a <see cref="QueueServiceClient"/> singleton using managed identity credentials,
+        /// constructing the queue service URI from the storage account name.
+        /// </summary>
+        private static void RegisterQueueServiceClient(
+            WebApplicationBuilder builder,
+            HW4NoteKeeper.Settings.StorageAccountSettings storageSettings)
+        {
+            var credentialOptions = new DefaultAzureCredentialOptions();
+
+            if (builder.Environment.IsDevelopment())
+            {
+                credentialOptions.SharedTokenCacheTenantId = storageSettings.TenantId;
+                credentialOptions.VisualStudioCodeTenantId = storageSettings.TenantId;
+                credentialOptions.VisualStudioTenantId = storageSettings.TenantId;
+                credentialOptions.ExcludeEnvironmentCredential = true;
+                credentialOptions.ExcludeManagedIdentityCredential = true;
+                credentialOptions.ExcludeWorkloadIdentityCredential = true;
+                credentialOptions.ExcludeInteractiveBrowserCredential = true;
+            }
+            else
+            {
+                credentialOptions.ExcludeVisualStudioCredential = true;
+                credentialOptions.ExcludeVisualStudioCodeCredential = true;
+                credentialOptions.ExcludeAzureCliCredential = true;
+                credentialOptions.ExcludeAzurePowerShellCredential = true;
+                credentialOptions.ExcludeAzureDeveloperCliCredential = true;
+                credentialOptions.ExcludeWorkloadIdentityCredential = true;
+                credentialOptions.ExcludeInteractiveBrowserCredential = true;
+            }
+
+            var credential = new DefaultAzureCredential(credentialOptions);
+            var queueServiceUri = new Uri($"https://{storageSettings.AccountName}.queue.core.windows.net");
+            builder.Services.AddSingleton(new QueueServiceClient(queueServiceUri, credential));
         }
 
         /// <summary>

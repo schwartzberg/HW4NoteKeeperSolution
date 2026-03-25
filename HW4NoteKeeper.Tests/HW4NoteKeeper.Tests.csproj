@@ -12,8 +12,7 @@
 
   <ItemGroup>
     <!-- Link attachment files from the main project's folder (single source of truth) -->
-    <Content Include="..\HW4NoteKeeper\AzureStorageAttachments\*"
-             Link="AzureStorageAttachments\%(Filename)%(Extension)">
+    <Content Include="..\HW4NoteKeeper\AzureStorageAttachments\*" Link="AzureStorageAttachments\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- Copy main project's appsettings.json so tests can read the connection string -->
@@ -25,6 +24,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.18.0-beta.3" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.26.0-beta.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

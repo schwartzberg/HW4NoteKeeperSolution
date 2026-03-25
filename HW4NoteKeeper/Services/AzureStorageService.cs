@@ -1,6 +1,9 @@
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Queues;
+using HW4NoteKeeper.Models;
+using System.Text.Json;
 
 namespace HW4NoteKeeper.Services
 {
@@ -18,17 +21,27 @@ namespace HW4NoteKeeper.Services
     }
 
     /// <summary>
-    /// Provides Azure Blob Storage operations for note attachments.
-    /// Each note is represented by a private blob container named with the note's ID.
+    /// Provides Azure Blob Storage and Queue Storage operations for note attachments and zip archives.
+    /// Attachment containers are named with the note's ID; zip containers are named "{noteId}-zip".
     /// </summary>
     public class AzureStorageService
     {
+        private const string ZipRequestsQueueName = "attachment-zip-requests";
+
         private readonly BlobServiceClient _blobServiceClient;
+        private readonly QueueServiceClient _queueServiceClient;
         private readonly ILogger<AzureStorageService> _logger;
 
-        public AzureStorageService(BlobServiceClient blobServiceClient, ILogger<AzureStorageService> logger)
+        /// <summary>
+        /// Initializes a new instance of <see cref="AzureStorageService"/>.
+        /// </summary>
+        public AzureStorageService(
+            BlobServiceClient blobServiceClient,
+            QueueServiceClient queueServiceClient,
+            ILogger<AzureStorageService> logger)
         {
             _blobServiceClient = blobServiceClient;
+            _queueServiceClient = queueServiceClient;
             _logger = logger;
         }
 
@@ -234,6 +247,151 @@ namespace HW4NoteKeeper.Services
             }
 
             return attachments;
+        }
+
+        // ─── Queue operations ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Serialises a <see cref="ZipRequest"/> as JSON and enqueues it to the
+        /// <c>attachment-zip-requests</c> queue so the Azure Function can create the zip file.
+        /// </summary>
+        /// <param name="noteId">The note ID whose attachments should be zipped.</param>
+        /// <param name="zipFileId">The target blob name for the resulting zip file (e.g. "guid.zip").</param>
+        public async Task EnqueueZipRequestAsync(string noteId, string zipFileId)
+        {
+            QueueClient queueClient = _queueServiceClient.GetQueueClient(ZipRequestsQueueName);
+            await queueClient.CreateIfNotExistsAsync();
+
+            var message = new ZipRequest { NoteId = noteId, ZipFileId = zipFileId };
+            string json = JsonSerializer.Serialize(message);
+
+            await queueClient.SendMessageAsync(json);
+
+            _logger.LogInformation(
+                "Enqueued zip request for note {NoteId}, target file {ZipFileId}",
+                noteId, zipFileId);
+        }
+
+        // ─── Zip container operations ────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the name of the zip container for the given note ID.
+        /// </summary>
+        private static string GetZipContainerName(string noteId) => $"{noteId}-zip";
+
+        /// <summary>
+        /// Lists all zip blobs in the <c>{noteId}-zip</c> container.
+        /// Returns <c>null</c> if the zip container does not exist.
+        /// </summary>
+        /// <param name="noteId">The note ID (without the "-zip" suffix).</param>
+        public async Task<List<(string zipFileId, string contentType, DateTimeOffset createdDate, DateTimeOffset lastModifiedDate, long length)>?> ListZipBlobsAsync(string noteId)
+        {
+            string containerName = GetZipContainerName(noteId);
+            BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+
+            if (!(await containerClient.ExistsAsync()).Value)
+                return null;
+
+            var results = new List<(string, string, DateTimeOffset, DateTimeOffset, long)>();
+            await foreach (BlobItem blob in containerClient.GetBlobsAsync())
+            {
+                results.Add((
+                    blob.Name,
+                    blob.Properties.ContentType ?? "application/zip",
+                    blob.Properties.CreatedOn ?? DateTimeOffset.UtcNow,
+                    blob.Properties.LastModified ?? DateTimeOffset.UtcNow,
+                    blob.Properties.ContentLength ?? 0));
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Downloads a zip blob from the <c>{noteId}-zip</c> container.
+        /// Returns <c>null</c> if the container or blob does not exist.
+        /// </summary>
+        /// <param name="noteId">The note ID.</param>
+        /// <param name="zipFileId">The blob name of the zip file (e.g. "guid.zip").</param>
+        public async Task<(Stream stream, string contentType)?> DownloadZipBlobAsync(string noteId, string zipFileId)
+        {
+            string containerName = GetZipContainerName(noteId);
+            BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+
+            if (!(await containerClient.ExistsAsync()).Value)
+                return null;
+
+            BlobClient blobClient = containerClient.GetBlobClient(zipFileId);
+            if (!(await blobClient.ExistsAsync()).Value)
+                return null;
+
+            try
+            {
+                BlobDownloadResult download = await blobClient.DownloadContentAsync();
+                return (download.Content.ToStream(), "application/zip");
+            }
+            catch (RequestFailedException ex)
+            {
+                _logger.LogError(ex, "Failed to download zip blob {ZipFileId} from container {Container}", zipFileId, containerName);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Deletes a specific zip blob from the <c>{noteId}-zip</c> container.
+        /// Returns <see cref="AttachmentDeleteResult.NotFound"/> if the blob or container does not exist.
+        /// </summary>
+        /// <param name="noteId">The note ID.</param>
+        /// <param name="zipFileId">The blob name to delete.</param>
+        public async Task<AttachmentDeleteResult> DeleteZipBlobAsync(string noteId, string zipFileId)
+        {
+            string containerName = GetZipContainerName(noteId);
+            BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+
+            if (!(await containerClient.ExistsAsync()).Value)
+                return AttachmentDeleteResult.NotFound;
+
+            BlobClient blobClient = containerClient.GetBlobClient(zipFileId);
+            bool exists = (await blobClient.ExistsAsync()).Value;
+            if (!exists)
+                return AttachmentDeleteResult.NotFound;
+
+            try
+            {
+                await blobClient.DeleteAsync(DeleteSnapshotsOption.IncludeSnapshots);
+                _logger.LogInformation("Deleted zip blob {ZipFileId} from container {Container}", zipFileId, containerName);
+                return AttachmentDeleteResult.Deleted;
+            }
+            catch (RequestFailedException ex)
+            {
+                _logger.LogError(ex, "Failed to delete zip blob {ZipFileId} from container {Container}", zipFileId, containerName);
+                return AttachmentDeleteResult.Error;
+            }
+        }
+
+        /// <summary>
+        /// Deletes a blob container and all its blobs if it exists.
+        /// A no-op if the container does not exist.
+        /// </summary>
+        /// <param name="containerName">The exact container name to delete.</param>
+        public async Task DeleteContainerIfExistsAsync(string containerName)
+        {
+            BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            bool existed = (await containerClient.DeleteIfExistsAsync()).Value;
+            if (existed)
+                _logger.LogInformation("Deleted blob container {ContainerName}", containerName);
+            else
+                _logger.LogDebug("Container {ContainerName} did not exist – nothing to delete", containerName);
+        }
+
+        /// <summary>
+        /// Returns whether the zip container (<c>{noteId}-zip</c>) exists.
+        /// </summary>
+        /// <param name="noteId">The note ID.</param>
+        public async Task<bool> ZipContainerExistsAsync(string noteId)
+        {
+            string containerName = GetZipContainerName(noteId);
+            BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            return (await containerClient.ExistsAsync()).Value;
         }
     }
 }

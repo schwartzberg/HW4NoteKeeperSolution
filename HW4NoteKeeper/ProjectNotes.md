@@ -556,3 +556,127 @@ for each note based on its details. Tags are:
 - Application Insights (telemetry and monitoring)
 - Managed Identity / DefaultAzureCredential (passwordless authentication)
 - Swashbuckle/Swagger for API documentation
+
+---
+
+## 4.2. Homework 4 New Features
+
+### 4.2.1 NoteKeeperZipAttachmentController
+
+A new controller (`HW4NoteKeeper.Controllers.NoteKeeperZipAttachmentController`) was added at route `notes/{noteId}` with five operations:
+
+#### POST `/notes/{noteId}/attachmentzipfiles` — Request Zip Creation (§1.1)
+- Validates `noteId` is a valid GUID → 400 Bad Request if not
+- Verifies note exists in Azure SQL → 404 Not Found if not
+- Checks the attachment blob container has ≥ 1 blob → 204 No Content if 0 blobs
+- Generates a unique `zipFileId` (`{Guid}.zip`) and enqueues a JSON message to the `attachment-zip-requests` queue
+- Returns 202 Accepted with a `Location` header pointing to the future zip download URL
+
+#### DELETE `/notes/{noteId}/attachmentzipfiles/{zipFileId}` — Delete Zip File (§1.2)
+- Validates `noteId` (GUID) → 400; verifies note exists → 404
+- Deletes the zip blob from the `{noteId}-zip` container (idempotent)
+- Returns 204 No Content whether or not the blob existed
+
+#### GET `/notes/{noteId}/attachmentzipfiles/{zipFileId}` — Retrieve Zip by ID (§1.3)
+- Validates `noteId` (GUID) → 400; verifies note exists → 404
+- Returns the zip blob as `application/zip` stream → 200 OK
+- Returns 404 Not Found if the zip blob does not exist
+
+#### GET `/notes/{noteId}/attachmentzipfiles` — Retrieve All Zip Files (§1.4)
+- Validates `noteId` (GUID) → 400; verifies note exists → 404
+- Returns an array of `ZipBlobInfo` DTOs → 200 OK (empty array if container doesn't exist yet)
+
+#### DELETE `/notes/{noteId}` — Enhanced Note Delete (§1.5)
+- Validates `noteId` (GUID) → 400; verifies note exists → 404
+- Deletes the attachment blob container (`{noteId}`) — idempotent
+- Deletes the zip blob container (`{noteId}-zip`) — idempotent
+- Removes the Note (and cascade-deletes Tags) from Azure SQL
+- Returns 204 No Content
+
+### 4.2.2 AzureStorageService Extensions
+
+`HW4NoteKeeper.Services.AzureStorageService` was extended with:
+- `QueueServiceClient` dependency (injected as singleton; URI-based managed identity)
+- `EnqueueZipRequestAsync(noteId, zipFileId)` — sends JSON message to `attachment-zip-requests` queue
+- `ListZipBlobsAsync(noteId)` — lists blobs in `{noteId}-zip` container; returns `null` if container doesn't exist
+- `DownloadZipBlobAsync(noteId, zipFileId)` — downloads a zip blob; returns `null` if not found
+- `DeleteZipBlobAsync(noteId, zipFileId)` — deletes a single zip blob (idempotent)
+- `DeleteContainerIfExistsAsync(containerName)` — deletes any named container and all its blobs
+- `ZipContainerExistsAsync(noteId)` — checks existence of the `{noteId}-zip` container
+
+### 4.2.3 New Models and DTOs
+
+| File | Purpose |
+|------|---------|
+| `HW4NoteKeeper/Models/ZipRequest.cs` | Queue message payload (`NoteId`, `ZipFileId`) |
+| `HW4NoteKeeper/RequestAndResultObjects/ZipBlobInfo.cs` | DTO returned by the GET all zip files endpoint |
+
+### 4.2.4 HW4AzureFunctions Project (§3)
+
+A new Azure Functions project (`HW4AzureFunctions`, `net8.0`, isolated worker model v4) was added to the solution.
+
+- **Function name:** `AttachmentZipFunction`
+- **Trigger:** `QueueTrigger` on `attachment-zip-requests` queue in `st4hw3` storage account
+- **Connection name:** `AttachmentZipRequests` (configured as `AttachmentZipRequests__queueServiceUri` via managed identity)
+- **Logic:**
+  1. Deserialises the `ZipRequest` JSON payload
+  2. Lists all blobs in the `{noteId}` attachment container
+  3. If container is missing or empty — logs a warning and exits (no zip created)
+  4. Builds an in-memory `ZipArchive` containing all attachment blobs (using `System.IO.Compression`)
+  5. Uploads the zip to the `{noteId}-zip` container as blob named `{zipFileId}`, content-type `application/zip`
+- **Error handling:** Any exception causes retry; after `maxDequeueCount` (5) retries the message moves to `attachment-zip-requests-poison`
+- **Managed identity (EC3):** Uses `DefaultAzureCredential` for all blob and queue operations; `AzureWebJobsStorage__serviceUri` and `AttachmentZipRequests__queueServiceUri` point to `st4hw3`
+- **Azure deployment:** Function App `func-HW4`; managed identity `id-dbadmin` (Owner role)
+
+#### local.settings.json (HW4AzureFunctions)
+```json
+{
+  "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+  "AzureWebJobsStorage__serviceUri":    "https://st4hw3.blob.core.windows.net",
+  "AttachmentZipRequests__queueServiceUri": "https://st4hw3.queue.core.windows.net",
+  "StorageBlobServiceUri":  "https://st4hw3.blob.core.windows.net",
+  "StorageQueueServiceUri": "https://st4hw3.queue.core.windows.net"
+}
+```
+
+### 4.2.5 Testing
+
+Two new E2E test classes were added to `HW4NoteKeeper.Tests`:
+
+| Test Class | What it tests |
+|-----------|--------------|
+| `NoteKeeperZipAttachmentE2ETests` | All 5 controller endpoints + full cycle (POST→GET list→GET download→DELETE zip) |
+| `AttachmentZipFunctionE2ETests` | Azure Function end-to-end: enqueues real messages, verifies zip blobs in Azure Blob Storage |
+
+Both test classes are marked `[Collection("Sequential")]` and `[Trait("Category", "E2E")]` and require the app and function app to be deployed.  They must **not** be run automatically.
+
+The `HW4NoteKeeper.Tests.csproj` was updated to include `Azure.Storage.Queues` for queue interaction in function E2E tests.
+
+### 4.2.6 Azure Infrastructure Summary
+
+| Resource | Name | Purpose |
+|----------|------|---------|
+| Azure SQL Database | (existing from HW3) | Notes + Tags storage |
+| Azure Storage Account | `st4hw3` | Blob containers for attachments, zip containers, queues |
+| Azure Storage Queue | `attachment-zip-requests` | Triggers the Azure Function for zip creation |
+| Azure Storage Queue | `attachment-zip-requests-poison` | Dead-letter queue for failed function executions |
+| Azure App Service | `app-notekeeper-cscie94-ps-hw4` | Hosts the `HW4NoteKeeper` Web API |
+| Azure Function App | `func-HW4` | Hosts the `AttachmentZipFunction` |
+| Managed Identity | `id-dbadmin` | Used by both App Service and Function App for passwordless auth |
+
+### 4.2.7 Technology Stack (HW4 additions)
+- `System.IO.Compression.ZipArchive` — in-memory zip archive creation
+- `Azure.Storage.Queues` — queue client for enqueuing/dequeuing zip requests
+- Azure Functions Isolated Worker v4 (`net8.0`) — serverless zip processing
+- `DefaultAzureCredential` — managed identity for all Azure resource access (EC3)
+
+---
+
+## 4.2.8 Azure Storage Container for Function App Deployment
+
+During deployment of the `HW4AzureFunctions` Azure Function to `func-HW4`, a new Azure Blob Storage container was required for storing the function app deployment package.
+
+- **Container name:** `app-package-func-hw4`
+- **Storage account:** `st4hw3`
+- **Purpose:** Holds the Azure Function App deployment zip package (used by Azure when publishing via Visual Studio / Azure CLI)
+- **Created by:** Paul Schwartzberg during HW4 Azure Function deployment

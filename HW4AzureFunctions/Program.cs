@@ -1,0 +1,19 @@
+using HW4AzureFunctions;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+var host = new HostBuilder()
+    .ConfigureFunctionsWorkerDefaults()
+    .ConfigureServices(services =>
+    {
+        services.AddSingleton<BlobStorageHelper>();
+    })
+    .ConfigureLogging(logging =>
+    {
+        logging.SetMinimumLevel(LogLevel.Information);
+    })
+    .Build();
+
+await host.RunAsync();

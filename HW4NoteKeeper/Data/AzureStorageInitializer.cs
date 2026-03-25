@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using HW4NoteKeeper.Data;
+using HW4NoteKeeper.Settings;
 using Microsoft.ApplicationInsights;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ namespace HW4NoteKeeper.Data
     public class AzureStorageInitializer : IAzureStorageInitializer
     {
         private readonly BlobServiceClient _blobServiceClient;
+        private readonly StorageOperationalSettings _operationalSettings;
         private readonly ILogger _logger;
         private readonly TelemetryClient _telClient;
 
@@ -36,24 +38,36 @@ namespace HW4NoteKeeper.Data
 
         public AzureStorageInitializer(
             BlobServiceClient blobServiceClient,
+            StorageOperationalSettings operationalSettings,
             ILogger<AzureStorageInitializer> logger,
             TelemetryClient telClient)
         {
             _blobServiceClient = blobServiceClient;
+            _operationalSettings = operationalSettings;
             _logger = logger;
             _telClient = telClient;
         }
 
         /// <summary>
-        /// Deletes all blob containers in the storage account.
+        /// Deletes all blob containers in the storage account, except those listed in
+        /// <see cref="StorageOperationalSettings.ProtectedContainers"/>.
         /// </summary>
         public async Task DeleteAllContainersAsync()
         {
-            _logger.LogInformation("Deleting all containers in Azure Blob Storage...");
+            _logger.LogInformation("Deleting all containers in Azure Blob Storage (protected: [{Protected}])...",
+                string.Join(", ", _operationalSettings.ProtectedContainers));
             int deletedCount = 0;
+            int skippedCount = 0;
 
             await foreach (var container in _blobServiceClient.GetBlobContainersAsync())
             {
+                if (_operationalSettings.ProtectedContainers.Contains(container.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    skippedCount++;
+                    _logger.LogInformation("Skipping protected container: {ContainerName}", container.Name);
+                    continue;
+                }
+
                 try
                 {
                     await _blobServiceClient.DeleteBlobContainerAsync(container.Name);
@@ -66,7 +80,9 @@ namespace HW4NoteKeeper.Data
                 }
             }
 
-            _logger.LogInformation("Deleted {Count} container(s) from Azure Blob Storage.", deletedCount);
+            _logger.LogInformation(
+                "Deleted {Count} container(s), skipped {Skipped} protected container(s) from Azure Blob Storage.",
+                deletedCount, skippedCount);
         }
 
         /// <summary>

@@ -82,7 +82,9 @@ namespace HW4NoteKeeper.Tests
             // Set up Azure Storage Initializer
             var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<AzureStorageInitializer>();
             var telClient = new TelemetryClient(new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration());
-            _storageInitializer = new AzureStorageInitializer(_blobServiceClient, logger, telClient);
+            var storageOpsSettings = config.GetSection("StorageOperationalSettings").Get<HW4NoteKeeper.Settings.StorageOperationalSettings>()
+                ?? new HW4NoteKeeper.Settings.StorageOperationalSettings();
+            _storageInitializer = new AzureStorageInitializer(_blobServiceClient, storageOpsSettings, logger, telClient);
 
             // Set up DbInitializer (we'll use this in tests to trigger seeding)
             var aiSettings = config.GetSection("AzureOpenAI").Get<AISettings>()!;

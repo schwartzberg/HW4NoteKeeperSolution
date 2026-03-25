@@ -123,6 +123,17 @@ namespace HW4NoteKeeper
             var noteLimits = builder.Configuration.GetSection("NoteLimits").Get<HW4NoteKeeper.CustomSettings.NoteLimits>() 
                 ?? new HW4NoteKeeper.CustomSettings.NoteLimits();
             builder.Services.AddSingleton(implementationInstance: noteLimits);
+
+            // Bind StorageOperationalSettings (queue names, protected containers) from appsettings.json
+            var storageOperationalSettings = builder.Configuration
+                .GetSection("StorageOperationalSettings")
+                .Get<HW4NoteKeeper.Settings.StorageOperationalSettings>()
+                ?? new HW4NoteKeeper.Settings.StorageOperationalSettings();
+            builder.Services.AddSingleton(storageOperationalSettings);
+            logger.LogInformation(
+                "StorageOperationalSettings loaded: ZipQueue={Queue}, ProtectedContainers=[{Containers}]",
+                storageOperationalSettings.ZipRequestsQueueName,
+                string.Join(", ", storageOperationalSettings.ProtectedContainers));
              
             string connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
 

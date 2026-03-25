@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Queues;
 using HW4NoteKeeper.Models;
+using HW4NoteKeeper.Settings;
 using System.Text.Json;
 
 namespace HW4NoteKeeper.Services
@@ -26,10 +27,9 @@ namespace HW4NoteKeeper.Services
     /// </summary>
     public class AzureStorageService
     {
-        private const string ZipRequestsQueueName = "attachment-zip-requests";
-
         private readonly BlobServiceClient _blobServiceClient;
         private readonly QueueServiceClient _queueServiceClient;
+        private readonly StorageOperationalSettings _operationalSettings;
         private readonly ILogger<AzureStorageService> _logger;
 
         /// <summary>
@@ -38,10 +38,12 @@ namespace HW4NoteKeeper.Services
         public AzureStorageService(
             BlobServiceClient blobServiceClient,
             QueueServiceClient queueServiceClient,
+            StorageOperationalSettings operationalSettings,
             ILogger<AzureStorageService> logger)
         {
             _blobServiceClient = blobServiceClient;
             _queueServiceClient = queueServiceClient;
+            _operationalSettings = operationalSettings;
             _logger = logger;
         }
 
@@ -259,7 +261,7 @@ namespace HW4NoteKeeper.Services
         /// <param name="zipFileId">The target blob name for the resulting zip file (e.g. "guid.zip").</param>
         public async Task EnqueueZipRequestAsync(string noteId, string zipFileId)
         {
-            QueueClient queueClient = _queueServiceClient.GetQueueClient(ZipRequestsQueueName);
+            QueueClient queueClient = _queueServiceClient.GetQueueClient(_operationalSettings.ZipRequestsQueueName);
             await queueClient.CreateIfNotExistsAsync();
 
             var message = new ZipRequest { NoteId = noteId, ZipFileId = zipFileId };

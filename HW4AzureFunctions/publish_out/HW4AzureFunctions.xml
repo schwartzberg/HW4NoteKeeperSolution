@@ -7,35 +7,26 @@
         <member name="T:HW4AzureFunctions.AttachmentZipFunction">
             <summary>
             Azure Function triggered by messages in the <c>attachment-zip-requests</c> queue.
-            For each message the function:
-            <list type="number">
-              <item>Deserialises the <see cref="T:HW4AzureFunctions.Models.ZipRequest"/> payload.</item>
-              <item>Lists all blobs in the attachment container named with the note ID.</item>
-              <item>Creates an in-memory zip archive containing all attachment blobs.</item>
-              <item>Uploads the archive to the <c>{noteId}-zip</c> container as the blob named by <c>ZipFileId</c>.</item>
-            </list>
-            If processing fails the message is retried up to <c>maxDequeueCount</c> times
-            (configured in <c>host.json</c>) before being moved to the poison queue
-            <c>attachment-zip-requests-poison</c>.
+            Delegates all business logic to <see cref="T:HW4AzureFunctions.AttachmentZipProcessor"/>.
             </summary>
         </member>
-        <member name="M:HW4AzureFunctions.AttachmentZipFunction.#ctor(HW4AzureFunctions.BlobStorageHelper,Microsoft.Extensions.Logging.ILogger{HW4AzureFunctions.AttachmentZipFunction},Microsoft.Extensions.Configuration.IConfiguration)">
+        <member name="T:HW4AzureFunctions.AttachmentZipHttpTestFunction">
             <summary>
-            Initialises a new instance of <see cref="T:HW4AzureFunctions.AttachmentZipFunction"/>.
+            HTTP-triggered test function that calls the same <see cref="T:HW4AzureFunctions.AttachmentZipProcessor"/>
+            used by the queue-triggered function. Useful for debugging in the Azure Portal
+            (Code + Test → Test/Run) without needing a queue message.
             </summary>
         </member>
-        <member name="M:HW4AzureFunctions.AttachmentZipFunction.Run(HW4AzureFunctions.Models.ZipRequest,Microsoft.Azure.Functions.Worker.FunctionContext)">
+        <member name="T:HW4AzureFunctions.AttachmentZipProcessor">
             <summary>
-            Entry point invoked by the Azure Functions runtime for each queue message.
+            Contains the business logic for creating zip archives from note attachments.
+            Called by both the queue-triggered function and the HTTP test function.
             </summary>
-            <param name="message">The raw JSON string dequeued from <c>attachment-zip-requests</c>.</param>
-            <param name="context">The function execution context.</param>
         </member>
-        <member name="M:HW4AzureFunctions.AttachmentZipFunction.NoteExistsInDatabaseAsync(System.String)">
+        <member name="M:HW4AzureFunctions.AttachmentZipProcessor.ProcessAsync(HW4AzureFunctions.Models.ZipRequest)">
             <summary>
-            Returns <c>true</c> if a note with the given ID exists in the SQL database.
-            If the connection string is not configured the check is skipped (returns <c>true</c>).
-            Any SQL error is re-thrown so the message is retried and eventually poisoned.
+            Processes a zip request: downloads all blobs from the note's attachment container,
+            creates a zip archive, and uploads it to the {noteId}-zip container.
             </summary>
         </member>
         <member name="T:HW4AzureFunctions.BlobStorageHelper">

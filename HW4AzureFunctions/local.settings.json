@@ -2,8 +2,8 @@
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "AzureWebJobsStorage__serviceUri": "https://st4hw3.blob.core.windows.net",
-    "AttachmentZipRequests__queueServiceUri": "https://st4hw3.queue.core.windows.net",
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=st4hw3;AccountKey=KS6JsMKXaOGIZzN7REl9np4bCW+nE1ICMbQseudJpjmffgzC7nmg89jzKEc+PHbDxqT8Lf7WgAYw+AStktjsYQ==;BlobEndpoint=https://st4hw3.blob.core.windows.net/;FileEndpoint=https://st4hw3.file.core.windows.net/;QueueEndpoint=https://st4hw3.queue.core.windows.net/;TableEndpoint=https://st4hw3.table.core.windows.net/",
+    "AttachmentZipRequests": "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=st4hw3;AccountKey=KS6JsMKXaOGIZzN7REl9np4bCW+nE1ICMbQseudJpjmffgzC7nmg89jzKEc+PHbDxqT8Lf7WgAYw+AStktjsYQ==;BlobEndpoint=https://st4hw3.blob.core.windows.net/;FileEndpoint=https://st4hw3.file.core.windows.net/;QueueEndpoint=https://st4hw3.queue.core.windows.net/;TableEndpoint=https://st4hw3.table.core.windows.net/",
     "StorageBlobServiceUri": "https://st4hw3.blob.core.windows.net",
     "StorageQueueServiceUri": "https://st4hw3.queue.core.windows.net"
   }

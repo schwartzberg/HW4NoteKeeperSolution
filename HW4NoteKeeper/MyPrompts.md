@@ -446,6 +446,27 @@ containers according to the seeding but that is not happening at all
 
 ---
 
+## 22. Local Testing Strategy + E2E Test Passing
+
+**Prompt:**
+```text
+congratulations / yes [proceed with deploying and running E2E test]
+```
+
+**Context:**
+After many failed attempts to debug the Azure Function purely on the server (messages going to poison queue, `NoOpListener` in logs, truncated clientId), the strategy shifted to testing locally via `func start` + an HTTP test trigger. Once the function worked locally, it was deployed and the E2E test was run.
+
+**Resolution:**
+- Extracted business logic into `AttachmentZipProcessor.cs` (service class)
+- Created `AttachmentZipHttpTestFunction.cs` — HTTP POST trigger calling same processor (enables local testing without needing a queue message)
+- Set `local.settings.json` to use storage connection string (managed identity doesn't work locally)
+- Verified function worked locally: uploaded blob directly via `az storage blob upload`, called HTTP endpoint, confirmed zip created in `{noteId}-zip` container
+- Deployed to Azure: `dotnet publish -c Release` + `Compress-Archive` + `az functionapp deployment source config-zip`
+- Ran E2E test: **PASSED** in 1 min 9 sec
+- Final result: `Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs` → ✅ Passed
+
+---
+
 ## 21. Wrong Working Directory — Copilot Session in HW3 Instead of HW4
 
 **Prompt:**

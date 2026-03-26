@@ -9,12 +9,39 @@
     },
     "bindings": [
       {
-        "name": "request",
+        "name": "message",
         "direction": "In",
         "type": "queueTrigger",
+        "dataType": "String",
         "queueName": "attachment-zip-requests",
         "connection": "AttachmentZipRequests",
         "properties": {}
+      }
+    ]
+  },
+  {
+    "name": "AttachmentZipHttpTest",
+    "scriptFile": "HW4AzureFunctions.dll",
+    "entryPoint": "HW4AzureFunctions.AttachmentZipHttpTestFunction.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
       }
     ]
   }

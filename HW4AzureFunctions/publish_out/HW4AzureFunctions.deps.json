@@ -10,8 +10,10 @@
         "dependencies": {
           "Azure.Identity": "1.17.0",
           "Azure.Storage.Blobs": "12.23.0",
-          "Microsoft.ApplicationInsights.WorkerService": "2.23.0",
+          "Microsoft.ApplicationInsights.WorkerService": "3.0.0",
           "Microsoft.Azure.Functions.Worker": "2.51.0",
+          "Microsoft.Azure.Functions.Worker.Core": "2.51.0",
+          "Microsoft.Azure.Functions.Worker.Extensions.Abstractions": "1.3.0",
           "Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs": "6.8.1",
           "Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues": "5.5.4",
           "Microsoft.Data.SqlClient": "5.2.2",
@@ -23,22 +25,22 @@
           "HW4AzureFunctions.dll": {}
         }
       },
-      "Azure.Core/1.49.0": {
+      "Azure.Core/1.50.0": {
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
-          "System.ClientModel": "1.7.0",
+          "System.ClientModel": "1.8.0",
           "System.Memory.Data": "10.0.0"
         },
         "runtime": {
           "lib/net8.0/Azure.Core.dll": {
-            "assemblyVersion": "1.49.0.0",
-            "fileVersion": "1.4900.25.47211"
+            "assemblyVersion": "1.50.0.0",
+            "fileVersion": "1.5000.25.55604"
           }
         }
       },
       "Azure.Identity/1.17.0": {
         "dependencies": {
-          "Azure.Core": "1.49.0",
+          "Azure.Core": "1.50.0",
           "Microsoft.Identity.Client": "4.76.0",
           "Microsoft.Identity.Client.Extensions.Msal": "4.76.0"
         },
@@ -46,6 +48,19 @@
           "lib/net8.0/Azure.Identity.dll": {
             "assemblyVersion": "1.17.0.0",
             "fileVersion": "1.1700.25.50703"
+          }
+        }
+      },
+      "Azure.Monitor.OpenTelemetry.Exporter/1.6.0": {
+        "dependencies": {
+          "Azure.Core": "1.50.0",
+          "OpenTelemetry.Extensions.Hosting": "1.15.0",
+          "OpenTelemetry.PersistentStorage.FileSystem": "1.0.2"
+        },
+        "runtime": {
+          "lib/net10.0/Azure.Monitor.OpenTelemetry.Exporter.dll": {
+            "assemblyVersion": "1.6.0.0",
+            "fileVersion": "1.600.26.7804"
           }
         }
       },
@@ -62,7 +77,7 @@
       },
       "Azure.Storage.Common/12.22.0": {
         "dependencies": {
-          "Azure.Core": "1.49.0",
+          "Azure.Core": "1.50.0",
           "System.IO.Hashing": "6.0.0"
         },
         "runtime": {
@@ -135,89 +150,28 @@
           }
         }
       },
-      "Microsoft.ApplicationInsights/2.23.0": {
+      "Microsoft.ApplicationInsights/3.0.0": {
+        "dependencies": {
+          "Azure.Monitor.OpenTelemetry.Exporter": "1.6.0"
+        },
         "runtime": {
-          "lib/netstandard2.0/Microsoft.ApplicationInsights.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
+          "lib/net10.0/Microsoft.ApplicationInsights.dll": {
+            "assemblyVersion": "3.0.0.1",
+            "fileVersion": "3.0.0.1"
           }
         }
       },
-      "Microsoft.ApplicationInsights.DependencyCollector/2.23.0": {
+      "Microsoft.ApplicationInsights.WorkerService/3.0.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0"
+          "Microsoft.ApplicationInsights": "3.0.0",
+          "OpenTelemetry.Extensions.Hosting": "1.15.0",
+          "OpenTelemetry.Instrumentation.Http": "1.15.0",
+          "OpenTelemetry.Instrumentation.SqlClient": "1.15.0"
         },
         "runtime": {
-          "lib/netstandard2.0/Microsoft.AI.DependencyCollector.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
-      "Microsoft.ApplicationInsights.EventCounterCollector/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.AI.EventCounterCollector.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
-      "Microsoft.ApplicationInsights.PerfCounterCollector/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0",
-          "Microsoft.Extensions.Caching.Memory": "1.0.0",
-          "System.Diagnostics.PerformanceCounter": "6.0.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.AI.PerfCounterCollector.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
-      "Microsoft.ApplicationInsights.WindowsServer/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0",
-          "Microsoft.ApplicationInsights.DependencyCollector": "2.23.0",
-          "Microsoft.ApplicationInsights.PerfCounterCollector": "2.23.0",
-          "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.23.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.AI.WindowsServer.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
-      "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.AI.ServerTelemetryChannel.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
-      "Microsoft.ApplicationInsights.WorkerService/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0",
-          "Microsoft.ApplicationInsights.DependencyCollector": "2.23.0",
-          "Microsoft.ApplicationInsights.EventCounterCollector": "2.23.0",
-          "Microsoft.ApplicationInsights.PerfCounterCollector": "2.23.0",
-          "Microsoft.ApplicationInsights.WindowsServer": "2.23.0",
-          "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.23.0",
-          "Microsoft.Extensions.DependencyInjection": "10.0.0",
-          "Microsoft.Extensions.Logging.ApplicationInsights": "2.23.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.ApplicationInsights.WorkerService.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
+          "lib/net10.0/Microsoft.ApplicationInsights.WorkerService.dll": {
+            "assemblyVersion": "3.0.0.1",
+            "fileVersion": "3.0.0.1"
           }
         }
       },
@@ -235,7 +189,7 @@
       },
       "Microsoft.Azure.Functions.Worker.Core/2.51.0": {
         "dependencies": {
-          "Azure.Core": "1.49.0",
+          "Azure.Core": "1.50.0",
           "Microsoft.Extensions.Hosting": "10.0.0"
         },
         "runtime": {
@@ -392,7 +346,7 @@
       },
       "Microsoft.Extensions.Azure/1.12.0": {
         "dependencies": {
-          "Azure.Core": "1.49.0",
+          "Azure.Core": "1.50.0",
           "Azure.Identity": "1.17.0",
           "Microsoft.Extensions.Configuration": "10.0.0",
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.0",
@@ -406,30 +360,6 @@
           "lib/net8.0/Microsoft.Extensions.Azure.dll": {
             "assemblyVersion": "1.12.0.0",
             "fileVersion": "1.1200.25.31204"
-          }
-        }
-      },
-      "Microsoft.Extensions.Caching.Abstractions/1.0.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "10.0.0"
-        },
-        "runtime": {
-          "lib/netstandard1.0/Microsoft.Extensions.Caching.Abstractions.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.20622"
-          }
-        }
-      },
-      "Microsoft.Extensions.Caching.Memory/1.0.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Caching.Abstractions": "1.0.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Options": "10.0.0"
-        },
-        "runtime": {
-          "lib/netstandard1.3/Microsoft.Extensions.Caching.Memory.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.20622"
           }
         }
       },
@@ -696,18 +626,6 @@
           }
         }
       },
-      "Microsoft.Extensions.Logging.ApplicationInsights/2.23.0": {
-        "dependencies": {
-          "Microsoft.ApplicationInsights": "2.23.0",
-          "Microsoft.Extensions.Logging": "10.0.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Logging.ApplicationInsights.dll": {
-            "assemblyVersion": "2.23.0.29",
-            "fileVersion": "2.23.0.29"
-          }
-        }
-      },
       "Microsoft.Extensions.Logging.Configuration/10.0.0": {
         "dependencies": {
           "Microsoft.Extensions.Configuration": "10.0.0",
@@ -915,15 +833,105 @@
           }
         }
       },
-      "System.ClientModel/1.7.0": {
+      "OpenTelemetry/1.15.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Diagnostics.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging.Configuration": "10.0.0",
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.15.0.1921"
+          }
+        }
+      },
+      "OpenTelemetry.Api/1.15.0": {
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.Api.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.15.0.1921"
+          }
+        }
+      },
+      "OpenTelemetry.Api.ProviderBuilderExtensions/1.15.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "OpenTelemetry.Api": "1.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.Api.ProviderBuilderExtensions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.15.0.1921"
+          }
+        }
+      },
+      "OpenTelemetry.Extensions.Hosting/1.15.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.0",
+          "OpenTelemetry": "1.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.Extensions.Hosting.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.15.0.1921"
+          }
+        }
+      },
+      "OpenTelemetry.Instrumentation.Http/1.15.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.0",
+          "Microsoft.Extensions.Options": "10.0.0",
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.Instrumentation.Http.dll": {
+            "assemblyVersion": "1.15.0.900",
+            "fileVersion": "1.15.0.900"
+          }
+        }
+      },
+      "OpenTelemetry.Instrumentation.SqlClient/1.15.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.0",
+          "Microsoft.Extensions.Options": "10.0.0",
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/OpenTelemetry.Instrumentation.SqlClient.dll": {
+            "assemblyVersion": "1.15.0.918",
+            "fileVersion": "1.15.0.918"
+          }
+        }
+      },
+      "OpenTelemetry.PersistentStorage.Abstractions/1.0.2": {
+        "runtime": {
+          "lib/netstandard2.0/OpenTelemetry.PersistentStorage.Abstractions.dll": {
+            "assemblyVersion": "1.0.2.792",
+            "fileVersion": "1.0.2.792"
+          }
+        }
+      },
+      "OpenTelemetry.PersistentStorage.FileSystem/1.0.2": {
+        "dependencies": {
+          "OpenTelemetry.PersistentStorage.Abstractions": "1.0.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/OpenTelemetry.PersistentStorage.FileSystem.dll": {
+            "assemblyVersion": "1.0.2.792",
+            "fileVersion": "1.0.2.792"
+          }
+        }
+      },
+      "System.ClientModel/1.8.0": {
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
           "System.Memory.Data": "10.0.0"
         },
         "runtime": {
           "lib/net9.0/System.ClientModel.dll": {
-            "assemblyVersion": "1.7.0.0",
-            "fileVersion": "1.700.25.47207"
+            "assemblyVersion": "1.8.0.0",
+            "fileVersion": "1.800.25.55302"
           }
         }
       },
@@ -958,25 +966,6 @@
             "assetType": "runtime",
             "assemblyVersion": "10.0.0.0",
             "fileVersion": "10.0.25.52411"
-          }
-        }
-      },
-      "System.Diagnostics.PerformanceCounter/6.0.0": {
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "10.0.0"
-        },
-        "runtime": {
-          "lib/net6.0/System.Diagnostics.PerformanceCounter.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.52210"
-          }
-        },
-        "runtimeTargets": {
-          "runtimes/win/lib/net6.0/System.Diagnostics.PerformanceCounter.dll": {
-            "rid": "win",
-            "assetType": "runtime",
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.52210"
           }
         }
       },
@@ -1043,12 +1032,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "Azure.Core/1.49.0": {
+    "Azure.Core/1.50.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wmY5VEEVTBJN+8KVB6qSVZYDCMpHs1UXooOijx/NH7OsMtK92NlxhPBpPyh4cR+07R/zyDGvA5+Fss4TpwlO+g==",
-      "path": "azure.core/1.49.0",
-      "hashPath": "azure.core.1.49.0.nupkg.sha512"
+      "sha512": "sha512-GBNKZEhdIbTXxedvD3R7I/yDVFX9jJJEz02kCziFSJxspSQ5RMHc3GktulJ1s7+ffXaXD7kMgrtdQTaggyInLw==",
+      "path": "azure.core/1.50.0",
+      "hashPath": "azure.core.1.50.0.nupkg.sha512"
     },
     "Azure.Identity/1.17.0": {
       "type": "package",
@@ -1056,6 +1045,13 @@
       "sha512": "sha512-QZiMa1O5lTniWTSDPyPVdBKOS0/M5DWXTfQ2xLOot96yp8Q5A69iScGtzCIxfbg/4bmp/TynibZ2VK1v3qsSNA==",
       "path": "azure.identity/1.17.0",
       "hashPath": "azure.identity.1.17.0.nupkg.sha512"
+    },
+    "Azure.Monitor.OpenTelemetry.Exporter/1.6.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cEPL/LecV5u4vgLwCypsHn86LgmyKUGC1tTMd5M2I8osxjUaiF3U02X9WkFil3GJB9Yyb1Pk5BtQ9yzQ1lSB/A==",
+      "path": "azure.monitor.opentelemetry.exporter/1.6.0",
+      "hashPath": "azure.monitor.opentelemetry.exporter.1.6.0.nupkg.sha512"
     },
     "Azure.Storage.Blobs/12.23.0": {
       "type": "package",
@@ -1113,54 +1109,19 @@
       "path": "grpc.net.common/2.65.0",
       "hashPath": "grpc.net.common.2.65.0.nupkg.sha512"
     },
-    "Microsoft.ApplicationInsights/2.23.0": {
+    "Microsoft.ApplicationInsights/3.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-nWArUZTdU7iqZLycLKWe0TDms48KKGE6pONH2terYNa8REXiqixrMOkf1sk5DHGMaUTqONU2YkS4SAXBhLStgw==",
-      "path": "microsoft.applicationinsights/2.23.0",
-      "hashPath": "microsoft.applicationinsights.2.23.0.nupkg.sha512"
+      "sha512": "sha512-WlPqOJXnUKHk8oXo/4HVZM5lqfgJfqaNXtzgVytdQZU237zaaytvDR5hA1G+BqQ7n/mm3sfush1y8bso+42s3g==",
+      "path": "microsoft.applicationinsights/3.0.0",
+      "hashPath": "microsoft.applicationinsights.3.0.0.nupkg.sha512"
     },
-    "Microsoft.ApplicationInsights.DependencyCollector/2.23.0": {
+    "Microsoft.ApplicationInsights.WorkerService/3.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-9YRdl9SNbTxd4AafJckyoJLr5gJdnvqFivjo+PY0lQTPEncPB+z3ZABG4iDfxN9HI1aLqyRINr1/7de9Wg8ZuQ==",
-      "path": "microsoft.applicationinsights.dependencycollector/2.23.0",
-      "hashPath": "microsoft.applicationinsights.dependencycollector.2.23.0.nupkg.sha512"
-    },
-    "Microsoft.ApplicationInsights.EventCounterCollector/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-gGt0JPw2dcSeIAIefyORJBdeMz8KgAFIktu8HV/NwkiGmLyw+YtifLm6B5gvGxO15AeMsGPbmvWEIvLfq88XPw==",
-      "path": "microsoft.applicationinsights.eventcountercollector/2.23.0",
-      "hashPath": "microsoft.applicationinsights.eventcountercollector.2.23.0.nupkg.sha512"
-    },
-    "Microsoft.ApplicationInsights.PerfCounterCollector/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-q9ApjZfBS9O8m3aQM2oVjsGBmlE8BCFywT7UR+8aqdNuz7HpoIxw4jHy0XOBergiFX/olrJF4OyPkGxc3H5JHg==",
-      "path": "microsoft.applicationinsights.perfcountercollector/2.23.0",
-      "hashPath": "microsoft.applicationinsights.perfcountercollector.2.23.0.nupkg.sha512"
-    },
-    "Microsoft.ApplicationInsights.WindowsServer/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-2B8CGfnB/tribkQAqRBhMvJYJK5TkEPMG/BB0QrlxdwVGEufayNLMveXjkQCqld9arXd6wKR1ve2XmkA0+xXKQ==",
-      "path": "microsoft.applicationinsights.windowsserver/2.23.0",
-      "hashPath": "microsoft.applicationinsights.windowsserver.2.23.0.nupkg.sha512"
-    },
-    "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-798Dudr4tkujslk1w+XcXOcCErmVsk+nhp+QCHLa3lcgi25vkAxBmzPUeQlRJVCNL/1f4x/YF+vQZ8RSuTXWCw==",
-      "path": "microsoft.applicationinsights.windowsserver.telemetrychannel/2.23.0",
-      "hashPath": "microsoft.applicationinsights.windowsserver.telemetrychannel.2.23.0.nupkg.sha512"
-    },
-    "Microsoft.ApplicationInsights.WorkerService/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-3+EJOAIkgbU5rQMFowiB1s04/gf56kuwwGjcFyoeL2iyweHirjJpGu7XoigjvtWGkxue6CAAjUPwuuGMHE97Yg==",
-      "path": "microsoft.applicationinsights.workerservice/2.23.0",
-      "hashPath": "microsoft.applicationinsights.workerservice.2.23.0.nupkg.sha512"
+      "sha512": "sha512-JY6SQyDUiPcd2xrve7S79jKLBmQMJclqOjeEDUGwwKAAy9y3JmfIaFA5uOCx9qAKJL+EHvhLpj4yH3qnoPqDqA==",
+      "path": "microsoft.applicationinsights.workerservice/3.0.0",
+      "hashPath": "microsoft.applicationinsights.workerservice.3.0.0.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.Worker/2.51.0": {
       "type": "package",
@@ -1231,20 +1192,6 @@
       "sha512": "sha512-3sIvazPesPdEn5t2yT+pwVWKm1LyN/LB31Wh52giRNf2ckcKmaxW2KOA5uNZHSaqABhMDPAYGMeGBFQreZ7uUg==",
       "path": "microsoft.extensions.azure/1.12.0",
       "hashPath": "microsoft.extensions.azure.1.12.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Caching.Abstractions/1.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-IxlFDVOchL6tdR05bk7EiJvMtvZrVkZXBhkbXqc3GxOHOrHFGcN+92WoWFPeBpdpy8ot/Px5ZdXzt7k+2n1Bdg==",
-      "path": "microsoft.extensions.caching.abstractions/1.0.0",
-      "hashPath": "microsoft.extensions.caching.abstractions.1.0.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Caching.Memory/1.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-6+7zTufCnZ+tfrUo7RbIRR3LB0BxwOwxfXuo0IbLyIvgoToGpWuz5wYEDfCYNOvpig9tY8FA0I1uRHYmITMXMQ==",
-      "path": "microsoft.extensions.caching.memory/1.0.0",
-      "hashPath": "microsoft.extensions.caching.memory.1.0.0.nupkg.sha512"
     },
     "Microsoft.Extensions.Configuration/10.0.0": {
       "type": "package",
@@ -1386,13 +1333,6 @@
       "path": "microsoft.extensions.logging.abstractions/10.0.0",
       "hashPath": "microsoft.extensions.logging.abstractions.10.0.0.nupkg.sha512"
     },
-    "Microsoft.Extensions.Logging.ApplicationInsights/2.23.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-JLEabPz445i1yRB0hKZVzJJE35QatRIzWlrMOiBQXr9kBJod0jkpkrBf94ln6kXu+jlEGohnXtuXacPPhybJDw==",
-      "path": "microsoft.extensions.logging.applicationinsights/2.23.0",
-      "hashPath": "microsoft.extensions.logging.applicationinsights.2.23.0.nupkg.sha512"
-    },
     "Microsoft.Extensions.Logging.Configuration/10.0.0": {
       "type": "package",
       "serviceable": true,
@@ -1512,12 +1452,68 @@
       "path": "microsoft.sqlserver.server/1.0.0",
       "hashPath": "microsoft.sqlserver.server.1.0.0.nupkg.sha512"
     },
-    "System.ClientModel/1.7.0": {
+    "OpenTelemetry/1.15.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-NKKA3/O6B7PxmtIzOifExHdfoWthy3AD4EZ1JfzcZU8yGZTbYrK1qvXsHUL/1yQKKqWSKgIR1Ih/yf2gOaHc4w==",
-      "path": "system.clientmodel/1.7.0",
-      "hashPath": "system.clientmodel.1.7.0.nupkg.sha512"
+      "sha512": "sha512-7mS/oZFF8S6xyqGQfMU1btp0nXJQUPWV535Vp/XMLYwRAUv36xQN+U4vufWBF1+z4HnRTOwuFHtUSGnHbyN6FQ==",
+      "path": "opentelemetry/1.15.0",
+      "hashPath": "opentelemetry.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.Api/1.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vk5OGdf6K9kQScCWo3bRjhDWCv6Pqw92IpX4dlARZ8B1WL7/2NGTDtCkkw42eQf7UdwyoHKzVvMH/PtL8d6z7w==",
+      "path": "opentelemetry.api/1.15.0",
+      "hashPath": "opentelemetry.api.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.Api.ProviderBuilderExtensions/1.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-OnuSUlRpGvowkOzGFQfy+KZFu0cITfKfh2IYJJiZskxVJiOuexwOOuvfDAgpJdmTzVWAHjYdz2shcHZaJ06UjQ==",
+      "path": "opentelemetry.api.providerbuilderextensions/1.15.0",
+      "hashPath": "opentelemetry.api.providerbuilderextensions.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.Extensions.Hosting/1.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RixjKyB1pbYGhWdvPto4KJs+exdQknJsnjUO9WszdLles5Vcd0EYzxPNJdwmLjYfP+Jfbr4B5nktM4ZgeHSWtg==",
+      "path": "opentelemetry.extensions.hosting/1.15.0",
+      "hashPath": "opentelemetry.extensions.hosting.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.Instrumentation.Http/1.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uToc7bUp8IEdb0ny9mKsL6FrrYelINPzxxiSShJgOf4XmQc4Azww6S5RjRj24YhsOn2a1MABOrxfVTZXtDk4Eg==",
+      "path": "opentelemetry.instrumentation.http/1.15.0",
+      "hashPath": "opentelemetry.instrumentation.http.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.Instrumentation.SqlClient/1.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-J0lI7lCngS4TJD4T7KNsAerOIjJHNV0T2MK0iuS2tK8wF7iqL1dp4MKW05FiyfvrIXkwsvFc1okKchxS8B0+SQ==",
+      "path": "opentelemetry.instrumentation.sqlclient/1.15.0",
+      "hashPath": "opentelemetry.instrumentation.sqlclient.1.15.0.nupkg.sha512"
+    },
+    "OpenTelemetry.PersistentStorage.Abstractions/1.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QuBc6e7M4Skvbc+eTQGSmrcoho7lSkHLT5ngoSsVeeT8OXLpSUETNcuRPW8F5drTPTzzTKQ98C5AhKO/pjpTJg==",
+      "path": "opentelemetry.persistentstorage.abstractions/1.0.2",
+      "hashPath": "opentelemetry.persistentstorage.abstractions.1.0.2.nupkg.sha512"
+    },
+    "OpenTelemetry.PersistentStorage.FileSystem/1.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ys0l9vL0/wOV9p/iuyDeemjX+d8iH4yjaYA1IcmyQUw0xsxx0I3hQm7tN3FnuRPsmPtrohiLtp31hO1BcrhQ+A==",
+      "path": "opentelemetry.persistentstorage.filesystem/1.0.2",
+      "hashPath": "opentelemetry.persistentstorage.filesystem.1.0.2.nupkg.sha512"
+    },
+    "System.ClientModel/1.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AqRzhn0v29GGGLj/Z6gKq4lGNtvPHT4nHdG5PDJh9IfVjv/nYUVmX11hwwws1vDFeIAzrvmn0dPu8IjLtu6fAw==",
+      "path": "system.clientmodel/1.8.0",
+      "hashPath": "system.clientmodel.1.8.0.nupkg.sha512"
     },
     "System.Configuration.ConfigurationManager/10.0.0": {
       "type": "package",
@@ -1532,13 +1528,6 @@
       "sha512": "sha512-uaFRda9NjtbJRkdx311eXlAA3n2em7223c1A8d1VWyl+4FL9vkG7y2lpPfBU9HYdj/9KgdRNdn1vFK8ZYCYT/A==",
       "path": "system.diagnostics.eventlog/10.0.0",
       "hashPath": "system.diagnostics.eventlog.10.0.0.nupkg.sha512"
-    },
-    "System.Diagnostics.PerformanceCounter/6.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-gbeE5tNp/oB7O8kTTLh3wPPJCxpNOphXPTWVs1BsYuFOYapFijWuh0LYw1qnDo4gwDUYPXOmpTIhvtxisGsYOQ==",
-      "path": "system.diagnostics.performancecounter/6.0.0",
-      "hashPath": "system.diagnostics.performancecounter.6.0.0.nupkg.sha512"
     },
     "System.IdentityModel.Tokens.Jwt/6.35.0": {
       "type": "package",

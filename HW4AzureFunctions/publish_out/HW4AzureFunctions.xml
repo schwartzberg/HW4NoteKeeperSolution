@@ -24,7 +24,7 @@
             Initialises a new instance of <see cref="T:HW4AzureFunctions.AttachmentZipFunction"/>.
             </summary>
         </member>
-        <member name="M:HW4AzureFunctions.AttachmentZipFunction.Run(System.String,Microsoft.Azure.Functions.Worker.FunctionContext)">
+        <member name="M:HW4AzureFunctions.AttachmentZipFunction.Run(HW4AzureFunctions.Models.ZipRequest,Microsoft.Azure.Functions.Worker.FunctionContext)">
             <summary>
             Entry point invoked by the Azure Functions runtime for each queue message.
             </summary>

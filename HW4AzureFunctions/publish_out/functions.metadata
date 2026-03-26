@@ -9,10 +9,9 @@
     },
     "bindings": [
       {
-        "name": "message",
+        "name": "request",
         "direction": "In",
         "type": "queueTrigger",
-        "dataType": "String",
         "queueName": "attachment-zip-requests",
         "connection": "AttachmentZipRequests",
         "properties": {}

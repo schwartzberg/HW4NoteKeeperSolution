@@ -6,7 +6,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.IO.Compression;
-using System.Text.Json;
 
 namespace HW4AzureFunctions
 {
@@ -46,23 +45,11 @@ namespace HW4AzureFunctions
         /// <param name="context">The function execution context.</param>
         [Function("AttachmentZipFunction")]
         public async Task Run(
-            [QueueTrigger("attachment-zip-requests", Connection = "AttachmentZipRequests")] string message,
+            [QueueTrigger("attachment-zip-requests", Connection = "AttachmentZipRequests")] ZipRequest request,
             FunctionContext context)
         {
-            _logger.LogInformation("AttachmentZipFunction triggered. Message: {Message}", message);
-
-            ZipRequest? request;
-            try
-            {
-                request = JsonSerializer.Deserialize<ZipRequest>(message,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "Failed to deserialise queue message: {Message}", message);
-                // Throwing causes the runtime to retry and eventually poison the message.
-                throw;
-            }
+            _logger.LogInformation("AttachmentZipFunction triggered. NoteId={NoteId}, ZipFileId={ZipFileId}",
+                request?.NoteId, request?.ZipFileId);
 
             if (request is null
                 || !Guid.TryParse(request.NoteId, out _)

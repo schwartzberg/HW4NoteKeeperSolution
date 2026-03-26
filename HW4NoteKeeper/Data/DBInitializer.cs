@@ -65,6 +65,9 @@ namespace HW4NoteKeeper.Data
             // Step 3: Delete all containers from Azure Blob Storage
             await _storageInitializer.DeleteAllContainersAsync();
 
+            // Step 3b: Clear the zip-requests and poison queues so stale messages don't fire post-deploy
+            await _storageInitializer.ClearQueuesAsync();
+
             // Step 4: Seed the 4 default notes
             _logger.LogInformation("Seeding default notes...");
 

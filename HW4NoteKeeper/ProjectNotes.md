@@ -185,7 +185,7 @@ exceptions
 
 3. **Entity Framework Core with Azure SQL Database** - *Originally implemented for HW2*
    - Code-first approach with migrations
-   - Azure SQL Database: `sqldb-cscie94-2026`
+   - Azure SQL Database: `sqldb-cscie94-2026_hw4`
    - Note and Tag models with one-to-many relationship
    - Database seeding with default notes
 
@@ -341,7 +341,7 @@ All sensitive configuration values are stored in:
 
 **Connection String Configuration:**
 ```
-Server=tcp:sql-cscie94-2026-ps.database.windows.net,1433;Initial Catalog=sqldb-cscie94-2026;Encrypt=True;TrustServerCertificate=False;Connection Timeout=120;Authentication=Active Directory Default;
+Server=tcp:sql-cscie94-2026-ps.database.windows.net,1433;Initial Catalog=sqldb-cscie94-2026_hw4;Encrypt=True;TrustServerCertificate=False;Connection Timeout=120;Authentication=Active Directory Default;
 ```
 
 **Key Features:**

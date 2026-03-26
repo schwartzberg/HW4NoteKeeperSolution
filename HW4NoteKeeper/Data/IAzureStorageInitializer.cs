@@ -7,6 +7,12 @@ namespace HW4NoteKeeper.Data
     public interface IAzureStorageInitializer
     {
         /// <summary>
+        /// Clears all messages from the zip-requests queue and the poison queue.
+        /// Called during seeding so stale messages don't trigger the function after a fresh deploy.
+        /// </summary>
+        Task ClearQueuesAsync();
+
+        /// <summary>
         /// Deletes all blob containers in the storage account.
         /// Called before seeding to ensure a clean slate.
         /// </summary>

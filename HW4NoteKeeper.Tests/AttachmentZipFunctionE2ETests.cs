@@ -178,7 +178,7 @@ namespace HW4NoteKeeper.Tests
         {
             // Arrange – create note in DB + upload PNG attachments via the live API
             string noteId = await CreateTestNoteAsync();
-            await UploadPngAttachmentAsync(bnoteId, "WrappingPaper.png");
+            await UploadPngAttachmentAsync(noteId, "WrappingPaper.png");
             await UploadPngAttachmentAsync(noteId, "Tape.png");
 
             string zipFileId = $"{Guid.NewGuid()}.zip";

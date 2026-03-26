@@ -15,6 +15,12 @@ namespace HW4NoteKeeper.Settings
         public string ZipRequestsQueueName { get; set; } = "attachment-zip-requests";
 
         /// <summary>
+        /// Name of the Azure Storage Queue that receives unprocessable zip-creation requests (poison messages).
+        /// Default: <c>attachment-zip-requests-poison</c>.
+        /// </summary>
+        public string ZipPoisonQueueName { get; set; } = "attachment-zip-requests-poison";
+
+        /// <summary>
         /// Names of Azure Blob Storage containers that must <b>never</b> be deleted,
         /// even during the storage-reset that happens at seeding time.
         /// Default: <c>[ "app-package-func-hw4" ]</c>.

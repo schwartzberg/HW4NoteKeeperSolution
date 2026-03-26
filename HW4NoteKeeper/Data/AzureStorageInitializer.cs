@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using HW4NoteKeeper.Data;
 using HW4NoteKeeper.Settings;
 using Microsoft.ApplicationInsights;
@@ -16,6 +17,7 @@ namespace HW4NoteKeeper.Data
     public class AzureStorageInitializer : IAzureStorageInitializer
     {
         private readonly BlobServiceClient _blobServiceClient;
+        private readonly QueueServiceClient _queueServiceClient;
         private readonly StorageOperationalSettings _operationalSettings;
         private readonly ILogger _logger;
         private readonly TelemetryClient _telClient;
@@ -38,14 +40,50 @@ namespace HW4NoteKeeper.Data
 
         public AzureStorageInitializer(
             BlobServiceClient blobServiceClient,
+            QueueServiceClient queueServiceClient,
             StorageOperationalSettings operationalSettings,
             ILogger<AzureStorageInitializer> logger,
             TelemetryClient telClient)
         {
             _blobServiceClient = blobServiceClient;
+            _queueServiceClient = queueServiceClient;
             _operationalSettings = operationalSettings;
             _logger = logger;
             _telClient = telClient;
+        }
+
+        /// <summary>
+        /// Clears all messages from the zip-requests queue and the poison queue.
+        /// Called during seeding so stale messages do not trigger the Azure Function after a fresh deploy.
+        /// </summary>
+        public async Task ClearQueuesAsync()
+        {
+            string[] queueNames =
+            [
+                _operationalSettings.ZipRequestsQueueName,
+                _operationalSettings.ZipPoisonQueueName
+            ];
+
+            foreach (string queueName in queueNames)
+            {
+                try
+                {
+                    var queueClient = _queueServiceClient.GetQueueClient(queueName);
+                    if ((await queueClient.ExistsAsync()).Value)
+                    {
+                        await queueClient.ClearMessagesAsync();
+                        _logger.LogInformation("Cleared all messages from queue '{QueueName}'.", queueName);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Queue '{QueueName}' does not exist — nothing to clear.", queueName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to clear queue '{QueueName}'.", queueName);
+                }
+            }
         }
 
         /// <summary>

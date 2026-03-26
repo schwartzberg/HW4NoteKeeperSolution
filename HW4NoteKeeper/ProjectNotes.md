@@ -656,7 +656,7 @@ The `HW4NoteKeeper.Tests.csproj` was updated to include `Azure.Storage.Queues` f
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| Azure SQL Database | (existing from HW3) | Notes + Tags storage |
+| Azure SQL Database | `sqldb-cscie94-2026_hw4` | Notes + Tags storage |
 | Azure Storage Account | `st4hw3` | Blob containers for attachments, zip containers, queues |
 | Azure Storage Queue | `attachment-zip-requests` | Triggers the Azure Function for zip creation |
 | Azure Storage Queue | `attachment-zip-requests-poison` | Dead-letter queue for failed function executions |
@@ -680,3 +680,74 @@ During deployment of the `HW4AzureFunctions` Azure Function to `func-HW4`, a new
 - **Storage account:** `st4hw3`
 - **Purpose:** Holds the Azure Function App deployment zip package (used by Azure when publishing via Visual Studio / Azure CLI)
 - **Created by:** Paul Schwartzberg during HW4 Azure Function deployment
+
+- **IMPORTANT:** This container is protected and must **never** be deleted during storage seeding. Listed in `StorageOperationalSettings.ProtectedContainers` in `appsettings.json`.
+
+---
+
+## 4.2.9 Database: sqldb-cscie94-2026_hw4
+
+Per the HW4 requirements (page 1), a **new, dedicated Azure SQL database** was created for HW4. The old `sqldb-cscie94-2026` database from HW3 is **no longer used**.
+
+| Setting | Value |
+|---------|-------|
+| Database name | `sqldb-cscie94-2026_hw4` |
+| Connection string location | `appsettings.json` → `ConnectionStrings:DefaultConnection` |
+| Azure App Service override | App Setting `ConnectionStrings__DefaultConnection` |
+| Azure Function App override | App Setting `ConnectionStrings__DefaultConnection` |
+
+The managed identity `id-dbadmin` must have `db_owner` on this database:
+```sql
+CREATE USER [id-dbadmin] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_owner ADD MEMBER [id-dbadmin];
+```
+
+---
+
+## 4.2.10 Seeding Enhancements: Queue Clearing
+
+When `HW4NoteKeeper` starts (or is deployed), `DbInitializer.InitializeAsync()` now also clears both Azure Storage queues so stale messages do not trigger the Azure Function after a fresh deploy.
+
+**Seeding order:**
+1. Run EF Core migrations
+2. Delete all rows from `Note` and `Tag` tables
+3. Delete all blob containers (except protected ones in `ProtectedContainers`)
+4. **Clear all messages from `attachment-zip-requests` queue**
+5. **Clear all messages from `attachment-zip-requests-poison` queue**
+6. Seed the 4 default notes with attachments
+
+**Implementation:**
+- `ZipPoisonQueueName` added to `StorageOperationalSettings` and `appsettings.json`
+- `ClearQueuesAsync()` added to `IAzureStorageInitializer` and implemented in `AzureStorageInitializer`
+- `AzureStorageInitializer` now receives `QueueServiceClient` via constructor injection
+- Handles missing queues gracefully (log warning, non-fatal)
+
+---
+
+## 4.2.11 Enhanced Note Delete (§1.5) — Container Cleanup Detail
+
+The enhanced note delete endpoint `DELETE notes/{noteId}` (`NoteKeeperZipAttachmentController.DeleteNoteWithAllAssets`) deletes **all** data associated with a note:
+
+| Step | What is deleted |
+|------|----------------|
+| 1 | Attachment blob container `{noteId}` and all its blobs |
+| 2 | Zip blob container `{noteId}-zip` and all its zip blobs |
+| 3 | Note record from `Note` table (SQL database) |
+| 4 | All `Tag` records for the note (cascade-deleted by EF Core) |
+
+Both container deletes use `DeleteContainerIfExistsAsync()` — idempotent, no error if container absent.
+
+**Route:** `DELETE /notes/{noteId}` — distinct from `DELETE /NoteKeeper/{noteId}` in `NoteKeeperController` which only removes the DB row (no storage cleanup).
+
+---
+
+## 4.2.12 E2E Test Cleanup (AttachmentZipFunctionE2ETests)
+
+`DisposeAsync()` performs belt-and-suspenders cleanup after every test (pass or fail):
+
+1. Calls `DELETE notes/{noteId}` (enhanced delete) for every note created — removes DB row, tags, attachment container, and zip container via the API.
+2. Additionally calls `BlobServiceClient.DeleteIfExistsAsync()` directly on every container in `_containerNamesToDelete` — covers the case where the API call fails silently.
+
+Containers tracked per test:
+- Attachment container `{noteId}` — added inside `CreateTestNoteAsync()`
+- Zip container `{noteId}-zip` — added inside each test that expects a zip

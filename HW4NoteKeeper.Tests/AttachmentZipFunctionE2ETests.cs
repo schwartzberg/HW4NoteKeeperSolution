@@ -80,14 +80,16 @@ namespace HW4NoteKeeper.Tests
 
         public async Task DisposeAsync()
         {
-            // Use the enhanced DELETE endpoint to remove note from DB + all its storage containers
+            // Use the enhanced DELETE (notes/{noteId}) which removes the note+tags from DB
+            // AND deletes both the attachment container ({noteId}) and the zip container ({noteId}-zip).
             foreach (string noteId in _createdNoteIds)
             {
-                try { await _apiClient.DeleteAsync($"NoteKeeper/{noteId}"); }
+                try { await _apiClient.DeleteAsync($"notes/{noteId}"); }
                 catch { /* best-effort cleanup */ }
             }
 
-            // Also clean up any zip containers that may not be covered by the enhanced DELETE
+            // Belt-and-suspenders: directly delete any tracked containers in case the API call above
+            // failed or the zip container was not yet associated with a note.
             foreach (string containerName in _containerNamesToDelete)
             {
                 try { await _blobServiceClient.GetBlobContainerClient(containerName).DeleteIfExistsAsync(); }
@@ -117,6 +119,11 @@ namespace HW4NoteKeeper.Tests
             using var doc = JsonDocument.Parse(body);
             string noteId = doc.RootElement.GetProperty("noteId").GetString()!;
             _createdNoteIds.Add(noteId);
+
+            // Track the attachment container (named by noteId) for direct cleanup in DisposeAsync,
+            // so it is deleted even if the enhanced DELETE endpoint fails to clean up storage.
+            _containerNamesToDelete.Add(noteId.ToLower());
+
             return noteId;
         }
 
@@ -187,7 +194,7 @@ namespace HW4NoteKeeper.Tests
 
             // Act – enqueue message and wait for function to produce zip
             await EnqueueZipRequestAsync(noteId, zipFileId);
-            await WaitForZipBlobAsync(noteId, zipFileId, maxWaitSeconds: 90);
+            await WaitForZipBlobAsync(noteId, zipFileId, maxWaitSeconds: 180);
 
             // Assert – zip container and blob both exist
             var zipContainer = _blobServiceClient.GetBlobContainerClient(zipContainerName);

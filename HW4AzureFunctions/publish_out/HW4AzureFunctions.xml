@@ -97,7 +97,7 @@
         </member>
         <member name="T:HW4AzureFunctions.GeneratedFunctionMetadataProvider">
             <summary>
-            Custom <see cref="T:Microsoft.Azure.Functions.Worker.Core.FunctionMetadata.IFunctionMetadataProvider"/> implementation that returns function metadata definitions for the current worker."/>
+            Custom <see cref="T:Microsoft.Azure.Functions.Worker.Core.FunctionMetadata.IFunctionMetadataProvider"/> implementation that returns function metadata definitions for the current worker.
             </summary>
         </member>
         <member name="M:HW4AzureFunctions.GeneratedFunctionMetadataProvider.GetFunctionMetadataAsync(System.String)">

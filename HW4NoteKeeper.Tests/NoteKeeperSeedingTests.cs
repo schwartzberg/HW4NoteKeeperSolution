@@ -1,13 +1,11 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+using Azure.Storage.Queues;
 using FluentAssertions;
 using HW4NoteKeeper.Data;
 using HW4NoteKeeper.RequestAndResultObjects;
-using HW4NoteKeeper.Services;
 using HW4NoteKeeper.Settings;
 using Microsoft.ApplicationInsights;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -66,9 +64,14 @@ namespace HW4NoteKeeper.Tests
                 ExcludeInteractiveBrowserCredential = true
             };
 
+            var credential = new DefaultAzureCredential(credentialOptions);
+
             _blobServiceClient = new BlobServiceClient(
                 new Uri(storageUrl),
-                new DefaultAzureCredential(credentialOptions));
+                credential);
+
+            string queueUrl = storageUrl.Replace(".blob.", ".queue.", StringComparison.OrdinalIgnoreCase);
+            var queueServiceClient = new QueueServiceClient(new Uri(queueUrl), credential);
 
             _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
@@ -84,7 +87,7 @@ namespace HW4NoteKeeper.Tests
             var telClient = new TelemetryClient(new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration());
             var storageOpsSettings = config.GetSection("StorageOperationalSettings").Get<HW4NoteKeeper.Settings.StorageOperationalSettings>()
                 ?? new HW4NoteKeeper.Settings.StorageOperationalSettings();
-            _storageInitializer = new AzureStorageInitializer(_blobServiceClient, storageOpsSettings, logger, telClient);
+            _storageInitializer = new AzureStorageInitializer(_blobServiceClient, queueServiceClient, storageOpsSettings, logger, telClient);
 
             // Set up DbInitializer (we'll use this in tests to trigger seeding)
             var aiSettings = config.GetSection("AzureOpenAI").Get<AISettings>()!;

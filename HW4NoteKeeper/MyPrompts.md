@@ -189,3 +189,276 @@ User asked whether new Azure App Service environment variables are needed after 
 - All implementation from the long prompt (§1.1–§1.5, §2, §3, §4) was already complete.
 - Ran non-E2E tests: **7/7 passed** ✅
 - Ran all E2E tests (Category=E2E) against live Azure deployment — results documented when complete
+
+---
+
+## 7. Fix E2E Test Errors — Step by Step
+
+**Prompt:**
+```text
+The tests you made are all with errors. We will need to solve this together, step by step, one
+test at a time. I will tell which test. And then we will only focus on getting that test to pass.
+The first test we will focus on is Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs.
+We need to create a new Note with Tags in the database. This must always happen because the POST
+method RequestZipCreation in the NoteKeeperZipAttachmentController can receive a Note Id that has
+been deleted. Therefore the azure function must check the Database both before creating the
+container in storage with name NoteId and suffix zip - to see if the NoteId still exists in the
+database, and only then create the container. So before creating any container for a zip blob, the
+Note.Id & Note.Summary & Note.Details must be in the database. Essentially we need to use the POST
+method called CreateNoteRequest in the NoteKeeperController. And then we must use the PUT method
+called PutAttachment in NoteKeeperAttachmentController to create a container and an attachment.
+The azure function must delete the message explicitly from the queue if it succeeds - it should
+not depend on the runtime to do this -- and if the function does not complete successfully it
+should still delete the message and put the message on the poison queue.
+```
+
+**Context:**
+E2E tests for `AttachmentZipFunctionE2ETests` were all failing. Core issues: duplicate class body (CS0111), wrong JSON property name (`"id"` vs `"noteId"`), wrong cleanup route, Azure Function not checking DB before creating containers, wrong container suffix (`.zip` vs `-zip`).
+
+**Resolution:**
+- Removed duplicate old class body from `AttachmentZipFunctionE2ETests.cs`
+- Fixed `CreateTestNoteAsync()`: reads `"noteId"` (not `"id"`) from JSON response
+- Fixed `DisposeAsync()`: calls `DELETE notes/{noteId}` (enhanced delete), not `DELETE NoteKeeper/{noteId}`
+- Fixed `AttachmentZipFunction.cs`: added `NoteExistsInDatabaseAsync()` DB check; corrected container suffix to `-zip`
+- Build: 0 errors, 1 pre-existing warning
+
+---
+
+## 8. Debug Test — Note Must Be Visible in Database After CreateTestNoteAsync
+
+**Prompt:**
+```text
+After you CreateTestNoteAsync() in the above test method - i want to stop the test in the
+debugger and see it in the database -- this must happen ... i can see a noteid is returned but
+i cannot see this note id in the database ... i must be able to see this ... it must be committed
+to the database ... and then we can continue with this test.
+```
+
+**Context:**
+When debugging, the note ID returned by the API was not visible in Azure SQL. The App Service was writing to the old HW3 database `sqldb-cscie94-2026` because `appsettings.json` still referenced it and there was no Azure App Setting override.
+
+**Resolution:**
+Identified root cause: App Service had no `ConnectionStrings__DefaultConnection` App Setting — it was reading only from the bundled `appsettings.json`. Led to prompt #9.
+
+---
+
+## 9. Switch to New Database sqldb-cscie94-2026_hw4
+
+**Prompt:**
+```text
+please see page one of the requirements pdf. I therefore created a new database. It is called
+sqldb-cscie94-2026_hw4. we should only be using this database and no other database - anywhere
+in the solution. only the database sqldb-cscie94-2026_hw4. right now we are using the old database
+sqldb-cscie94-2026 and we should not be using this database at all!!! Please correct the solution.
+I will then redeploy so we are using the right database and it is seeded properly.
+```
+
+**Context:**
+HW4 requirements mandate using `sqldb-cscie94-2026_hw4`. The solution was still pointing to the HW3 database.
+
+**Resolution:**
+- Updated `appsettings.json`: `Initial Catalog` → `sqldb-cscie94-2026_hw4`
+- Updated `ProjectNotes.md`: both DB name references updated
+- Added `ConnectionStrings__DefaultConnection` App Setting to `app-notekeeper-cscie94-ps-hw4` (was entirely missing)
+- Updated `func-HW4` Function App's `ConnectionStrings__DefaultConnection` to new DB
+- User redeployed both projects
+
+---
+
+## 10. Update ProjectNotes.md with New Database
+
+**Prompt:**
+```text
+You also need to update projectnotes.md with the new database (projectnotes.md is an existing
+file - please do not create it!!!°!!!!!!!!).
+```
+
+**Resolution:**
+Updated both occurrences of `sqldb-cscie94-2026` in `ProjectNotes.md` to `sqldb-cscie94-2026_hw4`. Added §4.2.9 documenting the new database, its connection string locations, and the required managed identity grant.
+
+---
+
+## 11. Seeding Must Clear Both Queues
+
+**Prompt:**
+```text
+the [sqldb-cscie94-2026_hw4] database is not being seeded ... when the HW4NoteKeeper solution
+is deployed it should delete all rows in the database in the Note and Tag tables and also all
+containers except the app-package-func-hw4 container.
+
+the queues attachment-zip-requests and attachment-zip-requests-poison also need to be emptied
+when seeding ... it does not make sense after deploying and seeding to have messages in these
+two queues at the current moment.
+```
+
+**Resolution:**
+- Added `ZipPoisonQueueName` to `StorageOperationalSettings.cs` and `appsettings.json`
+- Added `ClearQueuesAsync()` to `IAzureStorageInitializer` interface and `AzureStorageInitializer` implementation
+- `AzureStorageInitializer` now receives `QueueServiceClient` via constructor injection
+- Added `await _storageInitializer.ClearQueuesAsync()` in `DbInitializer.InitializeAsync()` after `DeleteAllContainersAsync()`
+- Build: 0 errors
+
+---
+
+## 12. E2E Test Cleanup — Delete Containers on Completion or Failure
+
+**Prompt:**
+```text
+if the Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs test fails ... you clean up the
+database (you delete the note and also tags?) that you were created for the test ... but you do
+not delete the container that was created for the test ... when the test fails or is done you
+need to clean up. And also delete the container that was created for the test.
+```
+
+**Resolution:**
+- Fixed `DisposeAsync()`: changed `NoteKeeper/{noteId}` → `notes/{noteId}` (routes to enhanced delete which removes both containers)
+- Fixed `CreateTestNoteAsync()`: adds the attachment container name (`noteId.ToLower()`) to `_containerNamesToDelete` for direct BlobServiceClient fallback cleanup
+- Result: both attachment container and zip container are deleted after every test regardless of pass/fail
+
+---
+
+## 13. Enhanced DELETE — Verify Both Containers Are Deleted
+
+**Prompt:**
+```text
+the enhanced delete should also delete all containers (those with the -zip suffix and those
+without) that are associated with a note id to be deleted - is this also happening? it should.
+```
+
+**Resolution:**
+Confirmed that `NoteKeeperZipAttachmentController.DeleteNoteWithAllAssets` already correctly calls:
+- `await _storageService.DeleteContainerIfExistsAsync(noteId)` — attachment container
+- `await _storageService.DeleteContainerIfExistsAsync($"{noteId}-zip")` — zip container
+
+The root issue was only in the E2E test's `DisposeAsync()` calling the wrong route (fixed in prompt #12).
+
+---
+
+## 14. Update ProjectNotes.md and MyPrompts.md
+
+**Prompt:**
+```text
+please update the projectnotes.md file with the above implementation detail concerning the
+enhanced delete also the myprompts.md file (all .md files exist!!!!!) with the prompts i have
+been using the last two hours.
+```
+
+**Resolution:**
+- Added §§4.2.9–4.2.12 to `ProjectNotes.md`: new database, queue clearing, enhanced delete container cleanup detail, E2E test cleanup design
+- Added prompts #7–#14 to `MyPrompts.md`
+
+---
+
+## 15. Increase Test Timeout for Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs
+
+**Prompt:**
+```text
+Function_CreatesZipBlob_WhenAttachmentContainerHasBlobs is failing with a timeout ... what is
+the time out? here can you increase it to three minutes?
+```
+
+**Resolution:**
+- Increased `maxWaitSeconds` in `WaitForZipBlobAsync` call from 90 to 180 (3 minutes)
+- Changed in `AttachmentZipFunctionE2ETests.cs`
+
+---
+
+## 16. Azure Function Not Picking Up Queue Messages
+
+**Prompt:**
+```text
+the messages are not picked up at all by the azure function. the azure storage is st4hw3 and
+the queue name is attachment-zip-requests -- can you see why?
+```
+
+**Context:**
+Messages sat in `attachment-zip-requests` queue but `AttachmentZipFunction` never triggered.
+
+**Resolution:**
+- Root cause: `host.json` had `"visibilityTimeout": "00:00:60"` — the seconds field `60` is out of range (max 59), causing the function host to crash on startup
+- Fixed to `"00:01:00"` (1 minute)
+- Also advised verifying `AttachmentZipRequests__queueServiceUri` is set in Azure Function App environment variables
+
+---
+
+## 17. Azure Function Not Appearing in Portal
+
+**Prompt:**
+```text
+i am showing in the picture my function app but my function is not there!
+```
+
+**Context:**
+Azure portal showed only the built-in `WarmUp` function; `AttachmentZipFunction` was missing. Error: "Encountered an error (BadGateway) from host runtime."
+
+**Resolution:**
+- Confirmed root cause was the `host.json` TimeSpan bug (`"00:00:60"`) crashing the host at startup
+- Fixed `host.json` → `"00:01:00"`; required redeployment of `HW4AzureFunctions`
+
+---
+
+## 18. Redeployment Failing — Missing app-package-func-hw4 Container
+
+**Prompt:**
+```text
+[deployment error screenshots] BlobUploadFailedException: Failed to upload blob to storage
+account: Response status code does not indicate success: 404 (The specified container does
+not exist.)
+```
+
+**Context:**
+Deploying `HW4AzureFunctions` to `func-HW4` (Flex Consumption plan) failed because the deployment storage container `app-package-func-hw4` in `st4hw3` did not exist. The container had been deleted by seeding before protection was in place.
+
+**Resolution:**
+- User manually recreated `app-package-func-hw4` container in `st4hw3` via Azure Portal
+- Confirmed `StorageOperationalSettings.ProtectedContainers` already lists `app-package-func-hw4`, so seeding will never delete it again
+
+---
+
+## 19. app-package-func-hw4 Must Never Be Deleted
+
+**Prompt:**
+```text
+this container app-package-func-hw4 should never be deleted ... can you stop doing that?
+actually never delete app-package-func-hw4 unless i write otherwise
+```
+
+**Resolution:**
+- Confirmed `HW4NoteKeeper`'s `AzureStorageInitializer.DeleteAllContainersAsync()` already checks `_operationalSettings.ProtectedContainers` and skips `app-package-func-hw4`
+- (A mistaken edit was made to the wrong project `HW3NoteKeeper` and subsequently reverted)
+
+---
+
+## 20. Seeding Not Running After Deployment
+
+**Prompt:**
+```text
+the time is 02.29 but the containers are not at all being recreated — look at their time stamp —
+the seeding should delete all containers except app-package-func-hw4 and then create new
+containers according to the seeding but that is not happening at all
+```
+
+**Resolution:**
+- Seeding only runs when `HW4NoteKeeper` web API restarts
+- The deployment at 02:29 was of `func-HW4` (function app), not the web API — function deployments do not trigger web API seeding
+- To trigger seeding: redeploy `app-notekeeper-cscie94-ps-hw4` (the web API)
+- Portal showed "Issues Detected" on runtime status — advised checking Log Stream for startup errors
+
+---
+
+## 21. Wrong Working Directory — Copilot Session in HW3 Instead of HW4
+
+**Prompt:**
+```text
+the web app should be called HW4NoteKeeper and not HW3NoteKeeper - where do you get the
+wrong name from? ... please change your working directory to:
+C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeper
+```
+
+**Context:**
+Copilot session was opened with CWD pointing to `03-Assignment\HW3NoteKeeper`. All file edits were being made to the wrong project.
+
+**Resolution:**
+- Changed working directory to `C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeper`
+- Reverted incorrect edit made to `HW3NoteKeeper\Data\AzureStorageInitializer.cs`
+- Updated `ProjectNotes.md` in correct project: replaced `(existing from HW3)` → `sqldb-cscie94-2026_hw4` in infrastructure table

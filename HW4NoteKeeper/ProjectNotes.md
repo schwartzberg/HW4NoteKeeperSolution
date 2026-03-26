@@ -100,6 +100,34 @@ The core feature for HW4 is the implementation of Azure Blob Storage for storing
 
 
 
+**HOMEWORK 4 EXTRA CREDIT:**
+
+### Extra Credit 3: Managed Identities for Azure Storage Queues in Azure Function
+
+**Requirement:** Use managed identities (instead of connection strings/keys) for authentication to Azure Storage Queues in the Azure Function.
+
+**Implementation:**
+
+The `AttachmentZipFunction` (and `AttachmentZipProcessor`) authenticate to all Azure Storage resources using `DefaultAzureCredential` — no storage account keys or connection strings are stored anywhere in the code or configuration.
+
+**Queue trigger (passwordless):**
+- The queue trigger binding uses `AttachmentZipRequests__queueServiceUri` instead of a connection string, pointing to `https://st4hw3.queue.core.windows.net`
+- Azure Functions resolves this as a managed identity connection because the `__queueServiceUri` suffix (no `__AccountKey`) signals credential-based auth
+ 
+**Blob storage (passwordless):**
+- `BlobStorageHelper` is constructed with `new BlobServiceClient(uri, new DefaultAzureCredential())`
+- `AzureWebJobsStorage__serviceUri` replaces the traditional `AzureWebJobsStorage` connection string
+
+**Azure infrastructure:**
+- Managed Identity: `id-dbadmin` (user-assigned) is assigned to `func-HW4`
+- Role assignments on `st4hw3`: `Storage Blob Data Contributor` and `Storage Queue Data Contributor`
+- App setting `AttachmentZipRequests__clientId` = the client ID of `id-dbadmin`
+
+**Local development note:**
+- `local.settings.json` uses the same URI-based settings; `DefaultAzureCredential` falls back to the Azure CLI credential (`az login` as `paulschwartzberg@outlook.com`) for local testing
+
+---
+
 **HOMEWORK 3 EXTRA CREDIT:**
 
 ### Extra Credit Option 1: Custom Application Insights Telemetry for Attachments

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,6 +9,7 @@
     <!-- Generate XML documentation for Swagger/comments -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>1591</NoWarn>
+    <UserSecretsId>f3aae457-beec-46d4-81ea-7ff48724debb</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

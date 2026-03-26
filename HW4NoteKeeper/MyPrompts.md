@@ -446,6 +446,25 @@ containers according to the seeding but that is not happening at all
 
 ---
 
+## 23. Document Extra Credit 3 in ProjectNotes.md
+
+**Prompt:**
+```text
+please update ProjectNotes.md file (it exists - do not create new), that i have implemented
+with you the following extra credit work (see requirements pdf) Extra Credit 3: Use managed
+identities for authentication to Azure Storage Queues in your Azure Function.
+It might already be in ProjectNotes.md
+```
+ 
+**Context:**
+EC3 was already implemented (managed identity via `DefaultAzureCredential`, URI-based queue trigger binding, `id-dbadmin` role assignments) but was only mentioned inline in the technical details section of ProjectNotes.md — not listed as a named extra credit item in §4.2.
+
+**Resolution:**
+- Added **HOMEWORK 4 EXTRA CREDIT** heading with a dedicated **Extra Credit 3** subsection in §4.2
+- Documents: passwordless queue trigger (`AttachmentZipRequests__queueServiceUri`), blob storage (`DefaultAzureCredential`), managed identity `id-dbadmin`, role assignments, and local dev fallback via Azure CLI credential
+
+---
+
 ## 22. Local Testing Strategy + E2E Test Passing
 
 **Prompt:**

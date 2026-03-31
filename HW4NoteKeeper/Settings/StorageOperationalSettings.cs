@@ -23,11 +23,13 @@ namespace HW4NoteKeeper.Settings
         /// <summary>
         /// Names of Azure Blob Storage containers that must <b>never</b> be deleted,
         /// even during the storage-reset that happens at seeding time.
-        /// Default: <c>[ "app-package-func-hw4" ]</c>.
+        /// Default: <c>[ "app-package-func-hw4", "azure-webjobs-hosts", "azure-webjobs-secrets" ]</c>.
         /// </summary>
         public List<string> ProtectedContainers { get; set; } = new()
         {
-            "app-package-func-hw4"
+            "app-package-func-hw4",
+            "azure-webjobs-hosts",
+            "azure-webjobs-secrets"
         };
     }
 }

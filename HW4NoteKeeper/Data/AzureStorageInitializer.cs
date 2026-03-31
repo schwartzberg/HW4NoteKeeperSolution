@@ -99,7 +99,8 @@ namespace HW4NoteKeeper.Data
 
             await foreach (var container in _blobServiceClient.GetBlobContainersAsync())
             {
-                if (_operationalSettings.ProtectedContainers.Contains(container.Name, StringComparer.OrdinalIgnoreCase))
+                if (_operationalSettings.ProtectedContainers.Contains(container.Name, StringComparer.OrdinalIgnoreCase)
+                    || container.Name.StartsWith("$"))
                 {
                     skippedCount++;
                     _logger.LogInformation("Skipping protected container: {ContainerName}", container.Name);

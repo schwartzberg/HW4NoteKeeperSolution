@@ -446,6 +446,31 @@ containers according to the seeding but that is not happening at all
 
 ---
 
+## 24. Copy and Rename Solution to HW4NoteKeeperEx1Solution
+
+**Prompt:**
+```text
+please copy the HW4NoteKeeperSolution and rename it HW4NoteKeeperEx1Solution. In the solution
+you copied there are two Projects called H4NoteKeeper and HW4AzureFunctions. Please rename the
+project HW4NoteKeeper to HW4NoteKeeperEx1 and rename the project HW4AzureFunctions to
+HW4AzureFunctionsEx1. Please rename the namespaces in the solution and in both projects
+accordingly. Put the renamed in the directory below your working directory in the 04-Assignment
+directory.
+```
+
+**Resolution:**
+- Used the `dotnet-project-renamer` skill
+- Copied `HW4NoteKeeper\` → `HW4NoteKeeperEx1\` in `04-Assignment\`
+- Removed `.git`, `.vs`, `publish`, `HW4NoteKeeper.BlazorUI` from copy
+- Renamed: solution file, 3 project folders, 3 `.csproj` files, `http` folder
+- Updated solution `.slnx` project paths
+- Updated `ProjectReference` paths in `HW4NoteKeeperEx1.Tests.csproj`
+- Replaced namespaces `HW4NoteKeeper` → `HW4NoteKeeperEx1` and `HW4AzureFunctions` → `HW4AzureFunctionsEx1` in 40 `.cs` files + 10 other files
+- Assigned fresh `UserSecretsId` to all 3 projects; copied 9 secrets (keys: `AzureOpenAI:DeploymentUri`, `AzureOpenAI:ApiKey`, `AzureOpenAI:gpt-5-mini`, `APPLICATIONINSIGHTS_CONNECTION_STRING`, `ApplicationInsights:AuthenticationApiKey`, `StorageAccountSettings:ContainerEndpoint`, `StorageAccountSettings:Url`, `StorageAccountSettings:TenantId`, `StorageAccountSettings:AccountName`) to both main and test projects
+- Build: ✅ 0 errors, 1 pre-existing warning
+
+---
+
 ## 23. Document Extra Credit 3 in ProjectNotes.md
 
 **Prompt:**

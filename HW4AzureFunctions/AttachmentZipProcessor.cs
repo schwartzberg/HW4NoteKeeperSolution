@@ -52,9 +52,9 @@ namespace HW4AzureFunctions
             // Verify the note still exists in the database before doing any storage work
             if (!await NoteExistsInDatabaseAsync(request.NoteId))
             {
-                _logger.LogWarning(
-                    "Note {NoteId} does not exist in the database. Discarding stale zip request (ZipFileId={ZipFileId}).",
-                    noteId, zipFileId);
+                _logger.LogError(
+                    "The note {NoteId} can't be found for the requested compression operation.",
+                    noteId);
                 return;
             }
 

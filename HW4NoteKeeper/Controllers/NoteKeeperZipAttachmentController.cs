@@ -84,7 +84,7 @@ namespace HW4NoteKeeper.Controllers
                     return NotFound();
                 }
 
-                // 1.1.4 – Note must have at least one attachment
+                // 1.1.5 – Note must have at least one attachment
                 int attachmentCount = await _storageService.GetBlobCountAsync(noteId);
                 if (attachmentCount == 0)
                 {

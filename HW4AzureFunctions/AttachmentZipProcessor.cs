@@ -137,7 +137,7 @@ namespace HW4AzureFunctions
                 await using var connection = new SqlConnection(_sqlConnectionString);
                 await connection.OpenAsync();
                 await using var command = connection.CreateCommand();
-                command.CommandText = "SELECT COUNT(1) FROM Notes WHERE Id = @NoteId";
+                command.CommandText = "SELECT COUNT(1) FROM Note WHERE Id = @NoteId";
                 command.Parameters.AddWithValue("@NoteId", Guid.Parse(noteId));
                 int count = Convert.ToInt32(await command.ExecuteScalarAsync());
                 return count > 0;

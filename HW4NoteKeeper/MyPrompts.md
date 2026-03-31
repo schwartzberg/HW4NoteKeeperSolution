@@ -527,3 +527,210 @@ Copilot session was opened with CWD pointing to `03-Assignment\HW3NoteKeeper`. A
 - Changed working directory to `C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeper`
 - Reverted incorrect edit made to `HW3NoteKeeper\Data\AzureStorageInitializer.cs`
 - Updated `ProjectNotes.md` in correct project: replaced `(existing from HW3)` → `sqldb-cscie94-2026_hw4` in infrastructure table
+
+---
+
+## 22. Azure Function Deployment Problems
+
+**Prompt:**
+```text
+i am having problems deploying my azure function
+```
+
+**Context:**
+Azure Function `func-HW4` was showing errors in the log stream after deployment. The function was failing to process queue messages with "Error checking database for NoteId" errors. Messages were retried 5 times then moved to the poison queue.
+
+**Resolution:**
+- Investigated the `AttachmentZipProcessor.cs` error handling flow
+- Identified that `NoteExistsInDatabaseAsync()` was throwing exceptions when SQL connection failed
+- Root cause analysis pointed to connection string and managed identity configuration issues
+
+---
+
+## 23. Requirement 1.1.4 — Post Method RequestZipCreation Compliance
+
+**Prompt:**
+```text
+Concerning the Post method in NoteKeeperZipAttachmentController.cs "RequestZipCreation" please check the requirements file HW04B Instructions1.pdf and point 1.1.4 in the requirements file. Is it implemented? Also if the NoteId is not found in the database this post method should return http code 404 and the error text indicated in point 1.1.4 of the requirements document "The note <note id> can't be found for the requested compression operation." should be logged. Is it? Please tell me where. Otherwise do it. Do not make any assumptions, ask me first.
+```
+
+**Context:**
+Verifying compliance with requirement 1.1.4 for the zip attachment POST endpoint. The requirement specifies that when a note is not found, the Azure Function should log the error message with `LogError`.
+
+**Resolution:**
+- Changed `LogWarning` → `LogError` in `AttachmentZipProcessor.cs` line 147
+- Updated log message to exact required text: `"The note {NoteId} can't be found for the requested compression operation."`
+- The 404 HTTP response was already implemented in the controller
+
+---
+
+## 24. LogError and Requirement 1.1.5 Compliance
+
+**Prompt:**
+```text
+Please change it to LogError like indicated in 1. and do 2. too
+```
+
+**Prompt:**
+```text
+Have you done point 1.1.5 in the requirements pdf? If not, please correct it, or do it.
+```
+
+**Context:**
+Ensuring both requirements 1.1.4 and 1.1.5 are correctly implemented, including fixing a mislabeled comment.
+
+**Resolution:**
+- Applied `LogError` change in `AttachmentZipProcessor.cs`
+- Fixed mislabeled comment `// 1.1.4` → `// 1.1.5` in `NoteKeeperZipAttachmentController.cs`
+- Verified 404 response is returned when NoteId is not found in database
+
+---
+
+## 25. Protected Containers — Seeding Deleting Azure Functions System Containers
+
+**Prompt:**
+```text
+when seeding ... you are not suppose to delete one container - which container is that?
+```
+
+**Prompt:**
+```text
+please see picture when seeding is done app-package-func-hw4 is deleted. The solution should never do that. Not during the seeding especially. Perhaps when you delete all containers you are also deleting app-package-func-hw4
+```
+
+**Context:**
+During database seeding, `DeleteAllContainersAsync()` was deleting Azure Functions system containers: `app-package-func-hw4`, `azure-webjobs-hosts`, and `azure-webjobs-secrets`. This broke the deployed Azure Function.
+
+**Resolution:**
+- Added `azure-webjobs-hosts` and `azure-webjobs-secrets` to `ProtectedContainers` in `StorageOperationalSettings.cs`
+- Updated `appsettings.json` to include all 3 protected containers
+- Added `|| container.Name.StartsWith("$")` skip in `AzureStorageInitializer.DeleteAllContainersAsync()` to also skip `$logs`, `$blobchangefeed` system containers
+- Updated `NoteKeeperSeedingTests.cs` with `_protectedContainers` HashSet containing all 3 containers
+- Updated 3 count loops in seeding tests to filter by protected containers AND `$`-prefix
+
+---
+
+## 26. Exclude AttachmentZipHttpTestFunction from Production Deployment
+
+**Prompt:**
+```text
+the azure function in the HW4AzureFunctions is not working can you see why from the picture? Make no assumptions and ask me first ... also you are deploying also the http triggered function AttachmentZipHttpTest - why are you doing that? Is it necessary - AttachmentZipHttpTest is only for testing purposes - please do not deploy it when publishing to production
+```
+
+**Context:**
+`AttachmentZipHttpTestFunction` (HTTP-triggered test function) was being deployed to production alongside the real queue-triggered function. It should only be available during local development/debugging.
+
+**Resolution:**
+- Wrapped entire `AttachmentZipHttpTestFunction.cs` class in `#if DEBUG` / `#endif` preprocessor directives
+- In Release configuration (used by VS Publish), `DEBUG` is not defined → class is excluded from compilation
+- Applied fix to both `HW4AzureFunctions` and `HW4AzureFunctionsEx1` solutions
+- Verified both solutions build with 0 errors in Release mode
+
+---
+
+## 27. Azure Function SQL Connection — ConnectionStrings__DefaultConnection
+
+**Prompt:**
+```text
+the ConnectionStrings__DefaultConnection has this value Server=tcp:sql-cscie94-2026-ps.database.windows.net,1433;Initial Catalog=sqldb-cscie94-2026_hw4;Encrypt=True;TrustServerCertificate=False;Connection Timeout=120;Authentication=Active Directory Default; --- should i put it under Environment variables in the tab "Connection Strings"? please tell me how?
+```
+
+**Context:**
+User needed to verify correct placement of the SQL connection string in Azure Portal for the Function App.
+
+**Resolution:**
+- Confirmed the setting belongs in **App Settings** tab (NOT Connection Strings tab)
+- The double-underscore format `ConnectionStrings__DefaultConnection` maps to `IConfiguration.GetConnectionString("DefaultConnection")` in Azure Functions
+- The Connection Strings tab adds type-specific prefixes (e.g., `SQLAZURECONNSTR_`) which would break the code
+- `Authentication=Active Directory Default` uses `DefaultAzureCredential` from Azure.Identity for managed identity authentication
+
+---
+
+## 28. Managed Identity Verification for Azure Function
+
+**Prompt:**
+```text
+pls see screenshots -- my managed identity is id-dbadmin ... in the last two pictures you can see that the function is using user assigned managed identity - using the user id-dbadmin and you can also see the assigned roles this user has. Should i assign more roles?
+```
+
+**Context:**
+Verifying that the managed identity `id-dbadmin` has all necessary permissions for the Azure Function to access SQL and Storage.
+
+**Resolution:**
+- Confirmed `id-dbadmin` SQL user EXISTS in `sqldb-cscie94-2026_hw4` with `db_datareader` and `db_datawriter` roles ✅
+- Confirmed Function App has `id-dbadmin` as user-assigned managed identity ✅
+- Confirmed `id-dbadmin` has `Storage Blob Data Contributor`, `Storage Queue Data Contributor`, `Storage Blob Data Owner` on `st4hw3` ✅
+- No additional roles needed
+
+---
+
+## 29. Visual Studio Publish Profile Analysis — Settings Not Changing
+
+**Prompt:**
+```text
+why are my environment variables changing?
+```
+
+**Prompt:**
+```text
+this is because there are two functions!!!! func-HW4 and func-HW4a and i am using func-HW4 (not with the a at the end -- this is my confusion)
+```
+
+**Context:**
+User thought environment variables were being overwritten by VS Publish. Investigation revealed two separate function apps exist: `func-HW4` (in use, properly configured) and `func-HW4a` (empty, no functions deployed).
+
+**Resolution:**
+- Read all 5 `serviceDependencies*.json` files — they only manage `APPLICATIONINSIGHTS_CONNECTION_STRING`, nothing else
+- Confirmed VS Zip Deploy does NOT sync `local.settings.json` to Azure
+- The confusion was caused by looking at `func-HW4a` (empty app) instead of `func-HW4` (properly configured)
+- All settings on `func-HW4` were intact after publish: `ConnectionStrings__DefaultConnection`, all `AzureWebJobsStorage__*` managed-identity settings, `AttachmentZipRequests__*` settings
+
+---
+
+## 30. SQL Table Name Fix — Notes → Note
+
+**Prompt:**
+```text
+why are you using in file AttachmentZipProcessor.cs this "SELECT COUNT(1) FROM Notes WHERE Id = @NoteId" on line 140 - the table is called Note not Notes - why are you referring to table "Notes" when the table is called Note - did i not ask - make no assumptions?
+```
+
+**Context:**
+The raw SQL query in `AttachmentZipProcessor.NoteExistsInDatabaseAsync()` was using `Notes` (the EF Core `DbSet` property name) instead of `Note` (the actual SQL table name as configured by `modelBuilder.Entity<Note>().ToTable("Note")`).
+
+**Resolution:**
+- Changed `"SELECT COUNT(1) FROM Notes WHERE Id = @NoteId"` → `"SELECT COUNT(1) FROM Note WHERE Id = @NoteId"` in line 140
+- Applied fix to both `HW4AzureFunctions\AttachmentZipProcessor.cs` and `HW4AzureFunctionsEx1\AttachmentZipProcessor.cs`
+- **This was likely the root cause of the SQL error** — the query was hitting a non-existent table
+
+---
+
+## 31. Sync All Corrections to Renamed Solution
+
+**Prompt:**
+```text
+please extend all the corrections you have done until and which you have not extended already to the new renamed solution too
+```
+
+**Context:**
+Ensuring all fixes applied to HW4NoteKeeper are also present in HW4NoteKeeperEx1.
+
+**Resolution:**
+- Ran comprehensive comparison of all 7 file pairs between both solutions
+- Confirmed all fixes were already synced — zero logic differences found
+- Built `HW4NoteKeeperEx1Solution.slnx` in Release: 0 errors, 0 warnings
+
+---
+
+## 32. Update MyPrompts.md and ProjectNotes.md
+
+**Prompt:**
+```text
+please update MyPrompts.md in both solutions (these files exist - do not create new ones) in both solutions with the last prompts and also the ProjectNotes.md files (they exist) as needed
+```
+
+**Context:**
+Catching up on prompt documentation for all interactions in this session.
+
+**Resolution:**
+- Added prompts #22 through #32 to MyPrompts.md in both solutions
+- Updated ProjectNotes.md in both solutions with technical notes about fixes applied

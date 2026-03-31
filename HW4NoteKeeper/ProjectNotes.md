@@ -779,3 +779,49 @@ Both container deletes use `DeleteContainerIfExistsAsync()` — idempotent, no e
 Containers tracked per test:
 - Attachment container `{noteId}` — added inside `CreateTestNoteAsync()`
 - Zip container `{noteId}-zip` — added inside each test that expects a zip
+
+---
+
+## 4.2.13 Session Fixes — Azure Function and Seeding Corrections
+
+### Protected Containers During Seeding
+
+`DeleteAllContainersAsync()` in `AzureStorageInitializer.cs` now skips:
+- **3 named containers** configured in `StorageOperationalSettings.ProtectedContainers`:
+  - `app-package-func-hw4` — Azure Function deployment package
+  - `azure-webjobs-hosts` — Azure Functions runtime host metadata
+  - `azure-webjobs-secrets` — Azure Functions secrets/keys
+- **`$`-prefixed containers** (e.g., `$logs`, `$blobchangefeed`) — Azure system containers
+
+These containers must NEVER be deleted, especially during seeding, as deleting them breaks the deployed Azure Function.
+
+### AttachmentZipHttpTestFunction — Debug-Only Compilation
+
+`AttachmentZipHttpTestFunction.cs` is wrapped in `#if DEBUG` / `#endif`. This HTTP-triggered test function is only compiled in Debug builds and is **excluded from production deployments** (VS Publish uses Release configuration).
+
+### SQL Table Name in AttachmentZipProcessor
+
+The raw SQL query in `NoteExistsInDatabaseAsync()` uses `Note` (the actual SQL table name configured via `modelBuilder.Entity<Note>().ToTable("Note")`), NOT `Notes` (which is only the EF Core `DbSet` property name).
+
+```sql
+SELECT COUNT(1) FROM Note WHERE Id = @NoteId
+```
+
+### Azure Function Environment Variables (func-HW4)
+
+Required App Settings (in Azure Portal → Environment variables → App Settings tab):
+
+| Setting | Purpose |
+|---------|---------|
+| `ConnectionStrings__DefaultConnection` | SQL connection string with `Authentication=Active Directory Default` |
+| `AzureWebJobsStorage__blobServiceUri` | Managed identity storage access |
+| `AzureWebJobsStorage__clientId` | Managed identity client ID |
+| `AzureWebJobsStorage__credential` | `managedidentity` |
+| `AzureWebJobsStorage__queueServiceUri` | Queue endpoint for managed identity |
+| `AzureWebJobsStorage__tableServiceUri` | Table endpoint for managed identity |
+| `AttachmentZipRequests__clientId` | Queue trigger managed identity |
+| `AttachmentZipRequests__credential` | `managedidentity` |
+| `AttachmentZipRequests__queueServiceUri` | Queue endpoint for zip requests |
+| `StorageBlobServiceUri` | Blob service URI for processor |
+
+**Important:** Visual Studio Zip Deploy does NOT sync `local.settings.json` to Azure. Settings configured in Azure Portal remain intact after publish.

@@ -815,3 +815,20 @@ DELETE attachment returned HTTP 500. Azure Blob Storage error: `InvalidResourceN
   - `GetZipContainerName` (affects all zip operations: list, download, delete, exists)
 - Applied same fix to both HW4NoteKeeper and HW4NoteKeeperEx1 solutions
 - Both solutions build successfully with 0 errors
+
+---
+
+## 37. Extra Credit 1 — Azure Table "Jobs" and Queue "attachment-zip-requests-ex1"
+
+**Prompt:**
+```text
+I created an Azure Table called "Jobs" in the same azure storage (st4hw3). I also created a new queue called attachment-zip-requests-ex1 for this too. Update ProjectNotes.md in both solutions. Update only the EX1 solution's secrets.json and/or appsettings.json as needed.
+```
+
+**Context:**
+Setting up Azure resources for Extra Credit 1 (job status tracking table). Created a `Jobs` table in Azure Table Storage and a dedicated queue `attachment-zip-requests-ex1` so the Ex1 solution doesn't interfere with the original solution's queue.
+
+**Resolution:**
+- Updated `ProjectNotes.md` in both solutions with section 4.2.15 documenting the new Azure resources
+- Updated `appsettings.json` in HW4NoteKeeperEx1 with new queue names and `JobsTableName`
+- Updated `secrets.json` for HW4NoteKeeperEx1 with `StorageAccountSettings:TableEndpoint`

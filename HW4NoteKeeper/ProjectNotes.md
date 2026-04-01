@@ -825,3 +825,42 @@ Required App Settings (in Azure Portal → Environment variables → App Setting
 | `StorageBlobServiceUri` | Blob service URI for processor |
 
 **Important:** Visual Studio Zip Deploy does NOT sync `local.settings.json` to Azure. Settings configured in Azure Portal remain intact after publish.
+
+---
+
+## 4.2.14 Extra Credit — HW4NoteKeeperEx1
+
+The solution ending with **Ex1** (`HW4NoteKeeperEx1`) is being updated with:
+
+> **Extra Credit 1: Add support for a job status tracking table.**
+
+This feature adds a database table to track the status of background zip-creation jobs, enabling the API to report job progress and completion status to clients.
+
+---
+
+## 4.2.15 Extra Credit 1 — Azure Resources Created (HW4NoteKeeperEx1 only)
+
+### Azure Table: Jobs
+
+An Azure Table named **`Jobs`** was created in the `st4hw3` storage account for tracking job status.
+
+| Setting | Value |
+|---------|-------|
+| Table name | `Jobs` |
+| Storage account | `st4hw3` |
+| URL | `https://st4hw3.table.core.windows.net/Jobs` |
+| Purpose | Track status of background zip-creation jobs (Extra Credit 1) |
+
+### Azure Queue: attachment-zip-requests-ex1
+
+A new Azure Storage Queue named **`attachment-zip-requests-ex1`** was created in the `st4hw3` storage account, dedicated to the Ex1 solution.
+
+| Setting | Value |
+|---------|-------|
+| Queue name | `attachment-zip-requests-ex1` |
+| Storage account | `st4hw3` |
+| URL | `https://st4hw3.queue.core.windows.net/attachment-zip-requests-ex1` |
+| Poison queue | `attachment-zip-requests-ex1-poison` (auto-created by Azure Functions runtime) |
+| Purpose | Separate queue for Ex1 zip requests, so Ex1 and the original solution do not interfere with each other |
+
+**Note:** The original HW4NoteKeeper solution continues to use `attachment-zip-requests`. The Ex1 solution uses `attachment-zip-requests-ex1`.

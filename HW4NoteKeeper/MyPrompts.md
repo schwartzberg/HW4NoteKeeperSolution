@@ -734,3 +734,84 @@ Catching up on prompt documentation for all interactions in this session.
 **Resolution:**
 - Added prompts #22 through #32 to MyPrompts.md in both solutions
 - Updated ProjectNotes.md in both solutions with technical notes about fixes applied
+
+---
+
+## 33. Managed Identity Authentication Failure
+
+**Prompt:**
+```text
+i am getting this exception
+
+ManagedIdentityCredential authentication failed: [Managed Identity] Error Message: Unable to load the proper Managed Identity...
+
+this is my defaultconnnection setting value for my azure function:
+Server=tcp:sql-cscie94-2026-ps.database.windows.net,1433;Initial Catalog=sqldb-cscie94-2026_hw4;Encrypt=True;TrustServerCertificate=False;Connection Timeout=120;Authentication=Active Directory Managed Identity;User Id=628ddd62-e831-41cd-9db8-5823c0647f43;
+
+what could be the problem the user id - is my the client id (the guid) of my managed user id-dbadmin
+```
+
+**Context:**
+Azure Function `func-HW4` was failing with `ManagedIdentityCredential` authentication error when trying to connect to SQL database.
+
+**Resolution:**
+- Root cause: Missing `AZURE_CLIENT_ID` environment variable in the Azure Function App settings
+- When using a **user-assigned managed identity**, `AZURE_CLIENT_ID` must be set to the identity's Client ID so `DefaultAzureCredential` / `ManagedIdentityCredential` knows which identity to use
+- User confirmed adding `AZURE_CLIENT_ID` to App Settings fixed the issue
+
+---
+
+## 34. Update Copilot Instructions with Managed Identity Troubleshooting
+
+**Prompt:**
+```text
+it was the above AZURE_CLIENT_ID that was missing. please update .github/copilot-instructions.md with this so it does not take so long to debug this the next time
+```
+
+**Context:**
+After resolving the managed identity issue, user wanted the troubleshooting knowledge documented.
+
+**Resolution:**
+- Added 5 new troubleshooting entries to `.github/copilot-instructions.md` in both solutions
+- Covers: AZURE_CLIENT_ID requirement, Client ID vs Object ID confusion, seeding deleting system containers, test functions deploying to production, SQL table name mismatch
+
+---
+
+## 35. DELETE Attachment Endpoint Not Working — Initial Report
+
+**Prompt:**
+```text
+concerning the delete function here - it is not working - can you see why?
+(Swagger screenshot of DELETE /notes/{noteId}/attachments/{attachmentId})
+```
+
+**Context:**
+User reported the DELETE attachment endpoint was returning HTTP 500 errors.
+
+**Resolution:**
+- Asked user for specific error details (status code, error message)
+
+---
+
+## 36. DELETE Attachment — InvalidResourceName Fix
+
+**Prompt:**
+```text
+the error is from file NoteKeeperAttachmentController.cs from the DeleteAttachment method and this is the error http code 500
+Azure.RequestFailedException: The specified resource name contains invalid characters.
+ErrorCode: InvalidResourceName
+(Screenshots showing the error logs and the existing container with lowercase name)
+```
+
+**Context:**
+DELETE attachment returned HTTP 500. Azure Blob Storage error: `InvalidResourceName — The specified resource name contains invalid characters.` The noteId `B465EF47-00F2-4779-BE46-E2A8FF01D605` contained uppercase letters, but Azure container names must be all lowercase.
+
+**Resolution:**
+- Root cause: `AzureStorageService` was passing `noteId` directly to `GetBlobContainerClient()` without lowercasing. Azure Blob Storage container names must be lowercase only.
+- `AzureStorageInitializer` already had the correct pattern: `noteId.ToString().ToLowerInvariant()` (line 149)
+- Fixed ALL 10 methods in `AzureStorageService.cs` that use noteId as a container name by adding `.ToLowerInvariant()`:
+  - `UploadAttachmentAsync`, `DeleteAttachmentAsync`, `GetBlobCountAsync`, `BlobExistsAsync`
+  - `UploadAttachmentFromFileAsync`, `ContainerExistsAsync`, `DownloadAttachmentAsync`, `ListAttachmentsAsync`
+  - `GetZipContainerName` (affects all zip operations: list, download, delete, exists)
+- Applied same fix to both HW4NoteKeeper and HW4NoteKeeperEx1 solutions
+- Both solutions build successfully with 0 errors

@@ -864,3 +864,47 @@ A new Azure Storage Queue named **`attachment-zip-requests-ex1`** was created in
 | Purpose | Separate queue for Ex1 zip requests, so Ex1 and the original solution do not interfere with each other |
 
 **Note:** The original HW4NoteKeeper solution continues to use `attachment-zip-requests`. The Ex1 solution uses `attachment-zip-requests-ex1`.
+
+
+---
+
+## 4.2.16 Extra Credit 1 — Controller Updates & Queue Routing
+
+### Context
+The Ex1 solution (HW4NoteKeeperEx1) adds job-status tracking via an Azure Table (Jobs). To keep the original HW4 solution intact and backward-compatible, the following design was adopted:
+
+### Original POST — RequestZipCreation (unchanged behavior)
+The original RequestZipCreation POST in NoteKeeperZipAttachmentController:
+- Route: POST notes/{noteId}/attachmentzipfiles
+- Still enqueues to ttachment-zip-requests (original queue)
+- **Does NOT insert a row into the Jobs table** — the legacy AttachmentZipFunction has no job-tracking logic
+- Returns 202 Accepted with Location pointing to the zip blob URL
+
+### New POST — RequestZipCreationEx1 (Ex1 solution only)
+A new POST method was added to NoteKeeperZipAttachmentControllerEx1 in the Ex1 solution:
+- Route: POST notes/{noteId}/attachmentzipfilesex1
+- Enqueues to ttachment-zip-requests-ex1 (Ex1-specific queue)
+- **Inserts a Queued row into the Jobs table** before enqueuing
+- Returns 202 Accepted with Location pointing to the job-status endpoint: 
+otes/{noteId}/attachmentzipfiles/jobs/{zipFileId}
+- Triggered by AttachmentZipFunctionEx1, which updates the Jobs row through its lifecycle
+
+### Two Queue Names in StorageOperationalSettings
+In the Ex1 solution, StorageOperationalSettings now carries two queue name properties:
+
+| Property | Default | Queue |
+|----------|---------|-------|
+| ZipRequestsQueueName | ttachment-zip-requests-ex1 | Used by the new Ex1 POST |
+| ZipRequestsLegacyQueueName | ttachment-zip-requests | Used by the old original POST |
+
+This separation means the two functions (AttachmentZipFunction and AttachmentZipFunctionEx1) never compete for the same queue messages.
+
+### NoteKeeperZipAttachmentControllerEx1 — All Endpoints
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | 
+otes/{noteId}/attachmentzipfilesex1 | Create zip job with Jobs row + ex1 queue |
+| GET | 
+otes/{noteId}/attachmentzipfiles/jobs/{zipFileId} | Get specific job status |
+| GET | 
+otes/{noteId}/attachmentzipfiles/jobs | Get all job statuses for a note |

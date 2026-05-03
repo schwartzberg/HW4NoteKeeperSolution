@@ -543,6 +543,48 @@ if (protectedContainers.Contains(container.Name) || container.Name.StartsWith("$
 
 **Solution**: Always check `OnModelCreating()` in the DbContext for `.ToTable()` calls before writing raw SQL. Use the mapped table name, not the DbSet property name.
 
+### Issue: Azure Function deployment fails with "The specified container does not exist"
+**Root Cause**: Azure Functions Flex Consumption requires **ZipDeploy** (with blob container) for deployment. Using **OneDeploy** fails because Flex Consumption's deployment pipeline cannot locate the deployment storage container (`app-package-func-hw4`).
+
+**Solution**:
+1. Use the **"Zip Deploy1"** publish profile, NOT "One Deploy"
+2. Ensure profile settings are: **Release | Any CPU**, **net10.0**, **Framework-dependent**, **Portable** (not linux-x64)
+3. The `UseBlobContainerDeploy` must be `true` in the pubxml
+4. The deployment container (`app-package-func-hw4`) must exist in storage account `st4hw3`
+
+**Key difference**:
+| Setting | Working | Failing |
+|---------|---------|---------|
+| Profile | Zip Deploy1 | One Deploy |
+| WebPublishMethod | `ZipDeploy` | `OneDeploy` |
+| Target runtime | Portable | linux-x64 (default) |
+
+### Issue: Azure Function build fails with "Could not find a part of the path" (MSB3027)
+**Root Cause**: Windows MAX_PATH (260 character) limit. The `Microsoft.NET.Sdk.Functions` build targets copy DLLs to deeply nested `obj` subdirectories (e.g., `obj\Release\net10.0\WorkerExtensions\bin\Release\net8.0\bin\runtimes\win\lib\netstandard2.0\`). If the project folder path is long enough, the total path exceeds 260 characters and the copy fails.
+
+**Diagnosis**:
+```powershell
+# Measure the failing path length
+$path = "[full destination path from error message]"
+Write-Host "Path length: $($path.Length) characters (MAX_PATH = 260)"
+```
+
+**Solution**:
+1. Enable Windows long path support (may not help for MSBuild's old copy task):
+   ```powershell
+   # Requires admin
+   Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
+   ```
+2. **Recommended**: Create a Windows **directory junction** from a short path:
+   ```cmd
+   mklink /J C:\ShortName "C:\Very\Long\Path\To\Your\Solution"
+   ```
+   Then open the solution from `C:\ShortName\YourSolution.slnx` in Visual Studio.
+   - The junction is a pointer, not a copy — all files remain in the original location
+   - The build sees the short path and stays under 260 chars
+
+**Prevention**: Keep solution folder paths short. Avoid deeply nested directories like `Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeperEx1\`.
+
 ## Running Tests
 
 ```bash

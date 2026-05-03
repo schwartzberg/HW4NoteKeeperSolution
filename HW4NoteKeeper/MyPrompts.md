@@ -832,3 +832,143 @@ Setting up Azure resources for Extra Credit 1 (job status tracking table). Creat
 - Updated `ProjectNotes.md` in both solutions with section 4.2.15 documenting the new Azure resources
 - Updated `appsettings.json` in HW4NoteKeeperEx1 with new queue names and `JobsTableName`
 - Updated `secrets.json` for HW4NoteKeeperEx1 with `StorageAccountSettings:TableEndpoint`
+
+---
+
+## 38. Compare OLD vs NEW Azure Functions and Web API Settings
+
+**Prompt:**
+```text
+You are comparing the OLD Azure Functions project (HW4AzureFunctions) with the NEW Azure Functions project (HW4AzureFunctionsEx1) to ensure:
+1. The OLD function's behavior is fully preserved in the NEW project (via legacy files)
+2. Settings are consistent where they should be, and differ only where expected for EC1
+
+IMPORTANT CONTEXT:
+- Both projects deploy to the SAME Azure Function App: `func-HW4`
+- The OLD solution is at: C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeper\HW4AzureFunctions\
+- The NEW solution is at: C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeperEx1\HW4AzureFunctionsEx1\
+- The NEW project contains LEGACY copies of the old function files (AttachmentZipFunction.cs and AttachmentZipProcessorLegacy.cs) so both old and new functions coexist
+- The OLD function triggers on queue: `attachment-zip-requests`
+- The NEW EC1 function triggers on queue: `attachment-zip-requests-ex1`
+
+Also compare the WEB API settings:
+- OLD Web API: C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeper\HW4NoteKeeper\
+- NEW Web API: C:\Users\schwa\Documents\H_DCE\cloud_computing_openai_e_94\assignments\04-Assignment\HW4NoteKeeperEx1\HW4NoteKeeperEx1\
+
+Please do the following:
+
+### PART 1: Function-by-function comparison
+Read ALL of these files and compare them line-by-line:
+
+OLD solution functions:
+- HW4AzureFunctions\AttachmentZipFunction.cs
+- HW4AzureFunctions\AttachmentZipProcessor.cs  
+- HW4AzureFunctions\AttachmentZipHttpTestFunction.cs
+- HW4AzureFunctions\Program.cs
+- HW4AzureFunctions\HW4AzureFunctions.csproj
+- HW4AzureFunctions\BlobStorageHelper.cs
+- HW4AzureFunctions\host.json
+- HW4AzureFunctions\local.settings.json
+
+NEW solution functions (including legacy copies):
+- HW4AzureFunctionsEx1\AttachmentZipFunction.cs (LEGACY copy)
+- HW4AzureFunctionsEx1\AttachmentZipFunctionEx1.cs (NEW EC1 function)
+- HW4AzureFunctionsEx1\AttachmentZipProcessor.cs (NEW EC1 processor with Jobs table)
+- HW4AzureFunctionsEx1\AttachmentZipProcessorLegacy.cs (LEGACY copy)
+- HW4AzureFunctionsEx1\AttachmentZipHttpTestFunction.cs
+- HW4AzureFunctionsEx1\Program.cs
+- HW4AzureFunctionsEx1\HW4AzureFunctionsEx1.csproj
+- HW4AzureFunctionsEx1\BlobStorageHelper.cs
+- HW4AzureFunctionsEx1\TableStorageHelper.cs (NEW for EC1)
+- HW4AzureFunctionsEx1\Models\JobEntity.cs (NEW for EC1)
+- HW4AzureFunctionsEx1\host.json
+- HW4AzureFunctionsEx1\local.settings.json
+
+### PART 2: Settings comparison
+Read and compare settings from:
+- OLD: HW4NoteKeeper\HW4NoteKeeper\appsettings.json
+- NEW: HW4NoteKeeperEx1\HW4NoteKeeperEx1\appsettings.json
+- OLD: HW4NoteKeeper\HW4NoteKeeper\Settings\StorageOperationalSettings.cs
+- NEW: HW4NoteKeeperEx1\HW4NoteKeeperEx1\Settings\StorageOperationalSettings.cs
+- OLD: HW4NoteKeeper\HW4NoteKeeper\Program.cs
+- NEW: HW4NoteKeeperEx1\HW4NoteKeeperEx1\Program.cs
+
+### PART 3: Output Tables
+
+Create the following tables:
+
+**Table 1: Legacy Function Files — Exact Match Verification**
+| File | OLD Path | NEW (Legacy Copy) Path | Identical? | Differences (if any) |
+Compare AttachmentZipFunction.cs (old) vs AttachmentZipFunction.cs (new legacy copy)
+Compare AttachmentZipProcessor.cs (old) vs AttachmentZipProcessorLegacy.cs (new legacy copy)
+Compare BlobStorageHelper.cs old vs new
+Compare host.json old vs new
+Compare AttachmentZipHttpTestFunction.cs old vs new
+
+**Table 2: Settings Comparison — Where OLD and NEW Should Match**
+| Setting | Location | OLD Value | NEW Value | Match? | Notes |
+Include: queue names, connection strings, storage URIs, protected containers, blob settings, all appsettings sections that exist in both
+
+**Table 3: Settings/Files That Are NEW (EC1-only)**
+| Setting/File | Location | Value | Purpose |
+Include: new queue name, Jobs table, TableStorageHelper, new controller, etc.
+
+**Table 4: DI Registration Comparison**
+| Service | OLD Program.cs | NEW Program.cs | Notes |
+Compare all DI registrations in both Function project Program.cs files
+
+**Table 5: .csproj Package Comparison**
+| Package | OLD Version | NEW Version | Notes |
+
+### PART 4: Risk Assessment
+After completing the tables, provide:
+1. A list of ANY differences in the legacy function files that could cause the old function to behave differently when deployed from the NEW project
+2. A list of ANY missing settings or configurations that the old function needs
+3. A list of ANY potential conflicts between old and new functions
+4. A PASS/FAIL verdict: Will the old function work exactly as before when deployed from the NEW project?
+
+Be thorough and precise. Read every file completely. Do not guess or assume — verify from the actual file contents.
+```
+
+**Context:**
+Need a verified, file-based comparison between the original HW4 Azure Function/Web API and the Ex1 solution to confirm the legacy queue-triggered behavior remains preserved while EC1-only queue/table changes stay isolated.
+
+**Resolution:**
+- Read every requested file from both solutions and compared legacy files, settings, DI registrations, and package references
+- Verified where values match exactly, where EC1 intentionally diverges, and where legacy copies are behavior-preserving but not byte-identical
+- Identified key risks: the DEBUG HTTP test function in Ex1 uses the new processor, the Ex1 Web API defaults route requests to the `-ex1` queue, and the Function App still requires external Azure app settings such as the SQL connection string
+
+---
+
+## 39. Fix Ex1 Azure Function Build Failure (Path Too Long)
+
+**Context:** The Ex1 Azure Functions project failed to build/publish from Visual Studio with error MSB3027 - "Could not find a part of the path" when copying System.Security.Cryptography.ProtectedData.dll.
+
+**Prompt:**
+```
+please see the build output when i try to deploy the new ... (then i will show you the old that works, but first the new the does not)
+[Build output showing MSB3026/MSB3027 errors with path too long]
+```
+
+**Resolution:**
+- Root cause: The destination file path during build was **261 characters** — 1 over Windows' 260 MAX_PATH limit. The Ex1 project folder names (HW4NoteKeeperEx1/HW4AzureFunctionsEx1) were longer than the original (HW4NoteKeeper/HW4AzureFunctions), pushing the deeply nested obj build path over the limit.
+- Fix 1: Enabled `LongPathsEnabled = 1` in Windows registry (helped but MSBuild's old copy task didn't respect it)
+- Fix 2 (working): Created a **Windows directory junction** `C:\HW4Ex1` → actual project path, reducing the build path to 169 characters
+- Used "One Deploy3" publish profile (same target as Zip Deploy) to successfully deploy
+
+---
+
+## 40. Base64 Queue Encoding Fix & Local Function Testing
+
+**Context:**
+Applied from Ex1 session — the Web API was sending raw JSON queue messages but host.json has "messageEncoding": "base64", causing Azure Functions to never process queue messages. Fixed by adding QueueClientOptions { MessageEncoding = QueueMessageEncoding.Base64 } to RegisterQueueServiceClient() in Program.cs. Both old and Ex1 solutions received this fix.
+
+## 41. Ex1 Controller Appearing in Old Solution Swagger
+
+**Prompt:**
+```
+see picture the 3 methods of NoteKeeperZipAttachmentControllerEx1 should NOT be in the swagger of the old solution/project ... the controller NoteKeeperZipAttachmentControllerEx1 should not be in the old solution only the new solution please.
+```
+
+**Context:**
+After deployment, Swagger on the old app service URL (`app-notekeeper-cscie94-ps-hw4-bdffa3cmetfag8em`) was showing the `NoteKeeperZipAttachmentControllerEx1` endpoints (2 GETs + 1 POST). Investigation confirmed the old solution's source code does NOT contain the Ex1 controller — the issue was that the Ex1 build had been accidentally published to the old app service. Resolution: re-publish the old solution (without Ex1 code) to the old app service.
